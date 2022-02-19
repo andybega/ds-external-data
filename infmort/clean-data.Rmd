@@ -5,11 +5,13 @@ output:
     toc: yes
 ---
 
-*Last updated on `r as.character(format(Sys.Date(), "%d %B %Y"))`*
+*Last compiled on: `r as.character(format(Sys.Date(), "%d %B %Y"))`*
 
 Note that places that require attention during data updates are marked with *UPDATE:*
 
 This script gets updated infant mortality data from the World Bank's World Development Indicators using the WDI package. It will then do some pretty aggressive imputations for countries that are missing early parts of a series. The goal is to impute defensively, i.e. if someone looks at a series with imputed values, they look reasonable. The goal is _not_ to capture in some way imputation variance/uncertainty. 
+
+There is a pretty cool website at https://childmortality.org/data that has the original survey data and model-based estimates. Writing in February 2022, while WDI is still missing values for 2020, that page does have model-based estimates for 2020. But I think the log-linear imputation still works sufficiently well to not depart from the WDI data, wich is easier to update. 
 
 ```{r setup-local, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -142,6 +144,23 @@ x <- c(NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
 plot(x, type = "l", ylim = c(0, 150))
 lines(impute_ts_loglinear(x)[1:16], col = "red")
 
+# If the first value in a series is missing and the second is not, carry back
+# the second value to impute the first NA
+carry_back_first_missing <- function(x, date) {
+  stopifnot(
+    # make sure there are no duplicate dates
+    length(unique(date))==length(date),
+    # make sure the dates are ordered regularly
+    all(date==date[order(date)])
+  )
+  if (length(x) > 1) {
+    if (is.na(x[1]) & !is.na(x[2])) {
+      x[1] <- x[2]
+    }
+  }
+  x
+}
+
 ```
 
 ## Get raw data
@@ -163,11 +182,11 @@ if (!file.exists("input/infmort.csv")) {
 ```{r}
 raw <- read_csv("input/infmort.csv")
 
-# UPDATE: check this is still the case
-# In the raw data all values for 2020 are missing; drop that year from the data
+# UPDATE: manually check to make sure that data for the last year are not all
+# missing. 
 last_year <- filter(raw, year==max(year))
-stopifnot(all(is.na(last_year[["SP.DYN.IMRT.IN"]])))
-raw <- filter(raw, year!=max(year))
+stopifnot(!all(is.na(last_year[["SP.DYN.IMRT.IN"]])))
+#raw <- filter(raw, year!=max(year))
 
 # convert to G&W system
 wdi <- raw %>%
@@ -202,11 +221,13 @@ range(wdi$year)
 
 ### Normalize to G&W statelist
 
+
 ```{r}
 # Add in missing cases from G&W state list and drop excess country-years not 
 # in G&W list (left join)
 statelist <- state_panel(1960,  # this cannot be min(year) because we lagged above
-                         max(wdi$year), partial = "any")
+                         year(today())-1, # UPDATE: check this is the end year I want to have
+                         partial = "any")
 wdi <- left_join(statelist, wdi, by = c("gwcode", "year")) %>%
   arrange(gwcode, year)
 ```
@@ -259,6 +280,10 @@ gdr <- gdr %>%
   filter(!duplicated(year)) %>%
   mutate(gwcode = 265) %>%
   rename(infmort_new = morinfr_tot)
+
+# Need to lag this before joining
+gdr$year <- gdr$year + 1
+
 # drop in values
 wdi <- left_join(wdi, gdr, by = c("gwcode", "year")) %>%
   mutate(infmort = ifelse(is.na(infmort), infmort_new, infmort)) %>%
@@ -267,7 +292,16 @@ wdi <- left_join(wdi, gdr, by = c("gwcode", "year")) %>%
 
 #### Taiwan 
 
-Data from the Ministry of Health and Welfare at https://www.mohw.gov.tw/. Specifically downloaded from https://www.mohw.gov.tw/cp-3961-42866-2.html and https://www.mohw.gov.tw/dl-36335-c57437dc-058a-44cc-b6aa-16c3af6bb18d.html.
+Data from the Ministry of Health and Welfare at https://www.mohw.gov.tw/. Specifically, looking for "Cause of Death" statistics, which should get to a page with years as options:
+
+- https://www.mohw.gov.tw/np-128-2.html
+
+This one goes to the 2017 page: 
+
+- https://www.mohw.gov.tw/cp-3961-42866-2.html
+
+Anyways, this should eventually lead to a spreadsheet download for that year. 
+
 
 ```{r custom-taiwan}
 # library(readxl)
@@ -297,8 +331,10 @@ taiwan <- read_csv("input/Taiwan_infmort.csv",
 taiwan <- taiwan %>%
   add_row(gwcode = 713, year = 2018, infmort_new = 4.16) %>%
   add_row(gwcode = 713, year = 2019, infmort_new = 3.83) %>%
-  # Don't have 2020 values yet, but let's just say it's same as 2019
-  add_row(gwcode = 713, year = 2020, infmort_new = 3.83)
+  add_row(gwcode = 713, year = 2020, infmort_new = 3.63)
+
+# need to lag this before joining
+taiwan$year <- taiwan$year + 1
 
 # drop in values
 wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
@@ -306,24 +342,46 @@ wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
   select(-infmort_new)
 ```
 
-#### Kosovo 2008-2017
+#### Kosovo 2008 onwards
 
 https://ec.europa.eu/eurostat/databrowser/view/tps00027/default/table?lang=en
 
 ```{r custom-kosovo}
-# kosovo <- read_xlsx("Kosovo_infmort_data_EC.xlsx", sheet = 3, skip = 8) %>% 
-#   filter(TIME == "Kosovo (under United Nations Security Council Resolution 1244/99)") %>% 
-#   select(-contains("...")) %>% 
-#   rename(year = "TIME") %>%
-#   mutate(`2013` = as.numeric(NA), 
-#          `2014` = as.numeric(NA)) %>% 
-#   gather(key = "year", value = "infmort_new") %>% 
-#   mutate(country_name = "Kosovo", 
-#          gwcode = 347, 
-#          infmort_new = as.numeric(infmort_new)) %>% 
-#   mutate(infmort_new = case_when(year == 2013 ~ 10.83333, TRUE ~ infmort_new), # There are 2 NAs -- 2013, 2014. I'm going to spread the difference between 2012 and 2015 ((9.7 - 11.4) / 3) + 11.4
-#           infmort_new = case_when(year == 2014 ~ 10.26666, TRUE ~ infmort_new)) ## ((9.7 - 11.4) / 3) + 10.83333 
-# write_csv(kosovo, "C:/Users/rickm/Dropbox/Closing Space/Data/infmort/kosovo_infmort.csv")
+raw <- read_tsv("input/tps00027_page_tabular.tsv")
+raw <- raw %>% 
+  # 2013 and 2014 are missing values but marked with character
+  mutate(`2013` = NA_real_, `2014` = NA_real_) %>%
+  pivot_longer(-1) 
+colnames(raw) <- c("drop", "year", "infmort_new")
+raw$drop <- NULL
+raw <- raw[, c("year", "infmort_new")]
+
+# The original data Rick Morgan found also had values for 2006 and 2007, add 
+# those back in
+raw <- rbind(
+  data.frame(year = c(2006, 2007), infmort_new = c(12, 11.1)),
+  raw
+)
+
+# UPDATE: 2013 and 2014 have been missing; linear interpolate
+if (!all(is.na(raw$infmort_new[raw$year %in% c(2013, 2014)]))) {
+  stop("Something has changed with Kosovo data")
+}
+delta <- raw$infmort_new[raw$year==2015] - raw$infmort_new[raw$year==2012]
+raw$infmort_new[raw$year %in% c(2013, 2014)] <- raw$infmort_new[raw$year==2012] + (c(1, 2)*delta/3)
+
+# UPDATE: Feb. 2022: Kosovo is missing 2020 and 2021, and the series is funky.
+# Use the average for 2016-2019 for 2020-2021
+raw <- rbind(
+  raw,
+  data.frame(
+    year = c(2020, 2021),
+    infmort_new = mean(raw$infmort_new[raw$year %in% c(2016:2019)])
+  ))
+
+raw$country_name <- "Kosovo"
+raw$gwcode <- 347
+write_csv(raw, "input/kosovo_infmort.csv")
 
 kosovo <- read_csv("input/kosovo_infmort.csv",
                    col_types = cols(
@@ -332,6 +390,10 @@ kosovo <- read_csv("input/kosovo_infmort.csv",
   country_name = col_character(),
   gwcode = col_double()
 ))
+
+# need to lag this before joining
+kosovo$year <- kosovo$year + 1
+
 # drop in values
 wdi <- left_join(wdi, kosovo, by = c("gwcode", "year")) %>%
   mutate(infmort = ifelse(is.na(infmort), infmort_new, infmort)) %>%
@@ -364,7 +426,7 @@ wdi <- wdi %>%
 Because we lagged the data, countries will have missing values in 1960 or their first year of independence, if it was after 1960. Use the 1960 or independence year value to impute, i.e. carry back impute those cases.
 
 ```{r}
-# Countries that gained indy in 1960 or later
+# Add indy syear, this is needed somewhere downstream, not in this chunk
 data(gwstates)
 indy <- gwstates %>% 
   # some states are present more than 1 time if they had interrupted indy; only
@@ -377,13 +439,12 @@ indy <- gwstates %>%
 stopifnot(nrow(indy)==length(unique(indy$gwcode)))
 
 wdi <- wdi %>%
-  left_join(indy, by = "gwcode") %>%
+  left_join(indy, by = "gwcode")
+
+wdi <- wdi %>%
   group_by(gwcode) %>%
   arrange(gwcode, year) %>%
-  mutate(infmort2 = case_when(
-    (is.na(infmort) & year>=syear) ~ lead(infmort, n = 1)[1],
-    TRUE ~ infmort
-  ))
+  mutate(infmort2 = carry_back_first_missing(infmort, year))
 
 # I add the imputed values as second column to allow comparison, if one wants
 # to do that at this point. 
@@ -393,6 +454,31 @@ sum(is.na(wdi$infmort2))
 wdi <- wdi %>%
   mutate(infmort = infmort2, infmort2 = NULL)
 ```
+
+### Carry-forward for missing last year
+
+*UPDATE: for the 2022 update, countries were still missing 2020 and 2021; rather than trying to extrapolate those, just use the last observed values from 2019 (aka 2020 when considering the 1-year lag.*
+
+```{r carry-forward-last-year}
+carry_forward_last_missing <- function(x) {
+  lx <- length(x)
+  xt <- tail(x, 2)
+  if (is.na(xt[2] & !is.na(xt[1]))) x[lx] <- xt[1]
+  x
+}
+
+wdi <- wdi %>%
+  group_by(gwcode) %>%
+  arrange(gwcode, year) %>%
+  mutate(infmort2 = carry_forward_last_missing(infmort)) %>%
+  ungroup()
+
+# change to compare for debug
+
+wdi <- wdi %>%
+  mutate(infmort = infmort2, infmort2 = NULL)
+```
+
 
 ### Check remaining missing values
 
@@ -438,7 +524,7 @@ The series overall look like the might be reasonably linear under some scale tra
 ggplot(wdi, aes(x = year, y = infmort, group = gwcode, 
                 color = has_missing)) +
   geom_line(alpha = 0.5) +
-  theme_light()
+  theme_light() 
 ```
 
 Compare log-linear and square root linear models.
@@ -511,6 +597,8 @@ The log-lienar and square root models both perform about equally well. What do t
 
 
 ```{r}
+# this block will fail if there are any cases left that have head or tail missing
+# values, which by this point should not be the case
 wdi <- wdi %>%
   group_by(gwcode) %>%
   arrange(gwcode, year) %>%
