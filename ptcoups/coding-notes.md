@@ -1,5 +1,7 @@
-P\&T Coups
+P&T Coups
 ================
+
+*Last updated on 2022-02-19*
 
 ## Update raw coup data
 
@@ -59,16 +61,7 @@ if (nrow(nomatch > 0)) {
   print(nomatch[, c("ccode", "year", "pt_coup", "pt_failed")])
   cat("625 Sudan 1955 is prior to independence in 1956")
 }
-```
 
-    ## Some P&T coups are not in G&W state list# A tibble: 1 x 4
-    ## # Groups:   ccode [1]
-    ##   ccode  year pt_coup pt_failed
-    ##   <int> <int>   <int>     <int>
-    ## 1   625  1955       0         1
-    ## 625 Sudan 1955 is prior to independence in 1956
-
-``` r
 cy <- left_join(cy, coups, by = c("gwcode" = "ccode", "year"))
 cy <- cy %>%
   replace_na(list(pt_coup = 0, pt_coup_num = 0, 

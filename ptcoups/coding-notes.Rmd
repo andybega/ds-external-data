@@ -3,6 +3,8 @@ title: "P&T Coups"
 output: github_document
 ---
 
+_Last updated on `r Sys.Date()`_
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 

@@ -1,81 +1,68 @@
-P\&T Coups
+P&T Coups
 ================
 
-Coup data-derived indicators for 1816 to the present.
+*Last updated on 2022-02-19*
+
+Coup data-derived indicators for 1950 to the present.
 
 ## Usage
 
 ``` r
 suppressPackageStartupMessages({
-  library("dplyr")
-  library("readr")
-  library("states")
-  library("ggplot2")
+  library(dplyr)
+  library(readr)
+  library(states)
+  library(ggplot2)
+  library(tibble)
 })
 
 coups <- read_csv("output/ptcoups.csv")
 ```
 
-    ## 
+    ## Rows: 11793 Columns: 20
+
     ## ── Column specification ────────────────────────────────────────────────────────
-    ## cols(
-    ##   .default = col_double()
-    ## )
-    ## ℹ Use `spec()` for the full column specifications.
+    ## Delimiter: ","
+    ## dbl (20): gwcode, year, pt_attempt, pt_attempt_num, pt_coup_num, pt_coup, pt...
+
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
 attr(coups, "spec") <- NULL
 
-head(coups)
+glimpse(coups)
 ```
 
-    ## # A tibble: 6 x 20
-    ##   gwcode  year pt_attempt pt_attempt_num pt_coup_num pt_coup pt_failed_num
-    ##    <dbl> <dbl>      <dbl>          <dbl>       <dbl>   <dbl>         <dbl>
-    ## 1      2  1950          0              0           0       0             0
-    ## 2      2  1951          0              0           0       0             0
-    ## 3      2  1952          0              0           0       0             0
-    ## 4      2  1953          0              0           0       0             0
-    ## 5      2  1954          0              0           0       0             0
-    ## 6      2  1955          0              0           0       0             0
-    ## # … with 13 more variables: pt_failed <dbl>, pt_coup_total <dbl>,
-    ## #   pt_failed_total <dbl>, pt_attempt_total <dbl>, pt_coup_num5yrs <dbl>,
-    ## #   pt_failed_num5yrs <dbl>, pt_attempt_num5yrs <dbl>, pt_coup_num10yrs <dbl>,
-    ## #   pt_failed_num10yrs <dbl>, pt_attempt_num10yrs <dbl>,
-    ## #   years_since_last_pt_coup <dbl>, years_since_last_pt_failed <dbl>,
-    ## #   years_since_last_pt_attempt <dbl>
-
-``` r
-str(coups)
-```
-
-    ## spec_tbl_df [11,399 × 20] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
-    ##  $ gwcode                     : num [1:11399] 2 2 2 2 2 2 2 2 2 2 ...
-    ##  $ year                       : num [1:11399] 1950 1951 1952 1953 1954 ...
-    ##  $ pt_attempt                 : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_attempt_num             : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_coup_num                : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_coup                    : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_failed_num              : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_failed                  : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_coup_total              : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_failed_total            : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_attempt_total           : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_coup_num5yrs            : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_failed_num5yrs          : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_attempt_num5yrs         : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_coup_num10yrs           : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_failed_num10yrs         : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ pt_attempt_num10yrs        : num [1:11399] 0 0 0 0 0 0 0 0 0 0 ...
-    ##  $ years_since_last_pt_coup   : num [1:11399] 1 2 3 4 5 6 7 8 9 10 ...
-    ##  $ years_since_last_pt_failed : num [1:11399] 1 2 3 4 5 6 7 8 9 10 ...
-    ##  $ years_since_last_pt_attempt: num [1:11399] 1 2 3 4 5 6 7 8 9 10 ...
+    ## Rows: 11,793
+    ## Columns: 20
+    ## $ gwcode                      <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
+    ## $ year                        <dbl> 1950, 1951, 1952, 1953, 1954, 1955, 1956, …
+    ## $ pt_attempt                  <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_attempt_num              <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_coup_num                 <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_coup                     <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_failed_num               <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_failed                   <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_coup_total               <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_failed_total             <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_attempt_total            <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_coup_num5yrs             <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_failed_num5yrs           <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_attempt_num5yrs          <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_coup_num10yrs            <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_failed_num10yrs          <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ pt_attempt_num10yrs         <dbl> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+    ## $ years_since_last_pt_coup    <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,…
+    ## $ years_since_last_pt_failed  <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,…
+    ## $ years_since_last_pt_attempt <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,…
 
 ``` r
 range(coups$year)
 ```
 
-    ## [1] 1950 2020
+    ## [1] 1950 2022
 
 ``` r
 plot_missing(coups, colnames(coups)[3:10], "gwcode", "year", "year", "GW") +
@@ -83,3 +70,18 @@ plot_missing(coups, colnames(coups)[3:10], "gwcode", "year", "year", "GW") +
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
+
+``` r
+cor(coups[, 3:ncol(coups)]) %>%
+  as_tibble() %>%
+  mutate(var1 = colnames(.)) %>%
+  tidyr::pivot_longer(-c(var1), names_to = "var2") %>%
+  ggplot(aes(x = var1, y = var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2("Correlation", limits = c(-1, 1)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "", y = "")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-1-2.png)<!-- -->

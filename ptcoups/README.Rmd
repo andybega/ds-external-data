@@ -3,32 +3,44 @@ title: "P&T Coups"
 output: github_document
 ---
 
+_Last updated on `r Sys.Date()`_
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Coup data-derived indicators for 1816 to the present. 
+Coup data-derived indicators for 1950 to the present.
 
 ## Usage
 
 ```{r}
 suppressPackageStartupMessages({
-  library("dplyr")
-  library("readr")
-  library("states")
-  library("ggplot2")
+  library(dplyr)
+  library(readr)
+  library(states)
+  library(ggplot2)
+  library(tibble)
 })
 
 coups <- read_csv("output/ptcoups.csv")
 attr(coups, "spec") <- NULL
 
-head(coups)
-
-str(coups)
+glimpse(coups)
 
 range(coups$year)
 
 plot_missing(coups, colnames(coups)[3:10], "gwcode", "year", "year", "GW") +
   ggtitle(sprintf("P&T Coups, %s to %s", min(coups$year), max(coups$year)))
+
+cor(coups[, 3:ncol(coups)]) %>%
+  as_tibble() %>%
+  mutate(var1 = colnames(.)) %>%
+  tidyr::pivot_longer(-c(var1), names_to = "var2") %>%
+  ggplot(aes(x = var1, y = var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2("Correlation", limits = c(-1, 1)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "", y = "")
 ```
 
