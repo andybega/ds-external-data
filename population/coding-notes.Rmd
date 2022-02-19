@@ -7,7 +7,7 @@ output:
 
 *Last updated on: `r Sys.Date()`*
 
-This file combines UN, WDI, and KSG population data to create a complete coverage dataset for 1950 to 2019, with only Abkhazia, South Ossetia, and Zanzibar missing. 
+This file combines UN, WDI, and KSG population data to create a complete coverage dataset for 1950 onwards, with no major states missing. 
 
 The data sources are:
 
@@ -149,9 +149,9 @@ un_raw <- files %>%
   gather(year, pop, -iso3n, -Location) %>%
   mutate(year = as.integer(year))
 
-# UPDATE: drop the 2021 data; i just didn't want to export a file with a single
+# UPDATE: drop the last year of data; i just didn't want to export a file with a single
 # year
-un_raw <- un_raw[!un_raw$year==2021, ] 
+un_raw <- un_raw[!un_raw$year==max(un_raw$year), ] 
 
 # Add GW codes
 un <- un_raw %>%

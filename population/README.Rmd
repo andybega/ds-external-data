@@ -13,7 +13,7 @@ library("states")
 
 *Last updated on: `r Sys.Date()`*
 
-Complete G&W coverage population data for 1816 to 2020. Preferentially from UN data for post-1949 data, with drop-ins from WDI and KSG; for pre-1950 KSG data. 
+Complete G&W coverage population data for 1816 onwards. Preferentially from UN data for post-1949 data, with drop-ins from WDI and KSG; for pre-1950 KSG data. 
 
 ## Usage
 
@@ -23,6 +23,9 @@ library("ggplot2")
 library("states")
 
 pop <- read_csv("output/population.csv")
+
+range(pop$year)
+
 str(pop)
 head(pop)
 

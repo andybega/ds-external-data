@@ -1,42 +1,41 @@
 Population
 ================
 
-  - [Expanded population data from
+-   [Expanded population data from
     KSG](#expanded-population-data-from-ksg)
-  - [WDI pop data](#wdi-pop-data)
-  - [UN pop data](#un-pop-data)
-      - [Reconstruct some countries that later
+-   [WDI pop data](#wdi-pop-data)
+-   [UN pop data](#un-pop-data)
+    -   [Reconstruct some countries that later
         split](#reconstruct-some-countries-that-later-split)
-  - [Combined and overlap](#combined-and-overlap)
-      - [Within country covariances between UN and
+-   [Combined and overlap](#combined-and-overlap)
+    -   [Within country covariances between UN and
         KSG](#within-country-covariances-between-un-and-ksg)
-      - [Can we combine KSG for pre-50 with
+    -   [Can we combine KSG for pre-50 with
         UN?](#can-we-combine-ksg-for-pre-50-with-un)
-  - [Start imputing/combining](#start-imputingcombining)
-      - [Germany](#germany)
-      - [Vietnam](#vietnam)
-      - [Yemen](#yemen)
-      - [Kosovo](#kosovo)
-      - [Tibet](#tibet)
-      - [Czechoslovakia](#czechoslovakia-1)
-  - [Get ready to write final data](#get-ready-to-write-final-data)
-      - [Check values for splitting/joining
+-   [Start imputing/combining](#start-imputingcombining)
+    -   [Germany](#germany)
+    -   [Vietnam](#vietnam)
+    -   [Yemen](#yemen)
+    -   [Kosovo](#kosovo)
+    -   [Tibet](#tibet)
+    -   [Czechoslovakia](#czechoslovakia-1)
+-   [Get ready to write final data](#get-ready-to-write-final-data)
+    -   [Check values for splitting/joining
         countries](#check-values-for-splittingjoining-countries)
-      - [Missingness](#missingness)
+    -   [Missingness](#missingness)
 
-*Last updated on: 2021-03-02*
+*Last updated on: 2022-02-07*
 
 This file combines UN, WDI, and KSG population data to create a complete
-coverage dataset for 1950 to 2019, with only Abkhazia, South Ossetia,
-and Zanzibar missing.
+coverage dataset for 1950 onwards, with no major states missing.
 
 The data sources are:
 
-  - <https://population.un.org/wpp/DataQuery/>: select total population
+-   <https://population.un.org/wpp/DataQuery/>: select total population
     by sex and SDG regions; only 35 years can be exported at a time so
     three files are needed
-  - <http://ksgleditsch.com/data/exppop.txt>
-  - World Bank, via the WDI package
+-   <http://ksgleditsch.com/data/exppop.txt>
+-   World Bank, via the WDI package
 
 To update the data:
 
@@ -64,15 +63,16 @@ if (!file.exists("input/exppop.tsv")) {
 ksg <- read_tsv("input/exppop.tsv")
 ```
 
-    ## 
+    ## Rows: 16729 Columns: 5
+
     ## ── Column specification ────────────────────────────────────────────────────────
-    ## cols(
-    ##   idnum = col_double(),
-    ##   idacr = col_character(),
-    ##   year = col_double(),
-    ##   pop = col_double(),
-    ##   source = col_double()
-    ## )
+    ## Delimiter: "\t"
+    ## chr (1): idacr
+    ## dbl (4): idnum, year, pop, source
+
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 The data range from 1816 to 2004.
 
@@ -132,9 +132,9 @@ un_raw <- files %>%
   gather(year, pop, -iso3n, -Location) %>%
   mutate(year = as.integer(year))
 
-# UPDATE: drop the 2021 data; i just didn't want to export a file with a single
+# UPDATE: drop the last year of data; i just didn't want to export a file with a single
 # year
-un_raw <- un_raw[!un_raw$year==2021, ] 
+un_raw <- un_raw[!un_raw$year==max(un_raw$year), ] 
 
 # Add GW codes
 un <- un_raw %>%
@@ -190,13 +190,11 @@ un$pop[un$gwcode==770 & un$year < 1970] <- pak70
 
 #### Yugoslavia/Serbia & Montenegro/Serbia
 
-  - 1990 and before: Slovenia, Croatia, BiH, Serbia, Kosovo, (UN does
+-   1990 and before: Slovenia, Croatia, BiH, Serbia, Kosovo, (UN does
     not seem to treat it separately), Montenegro, Macedonia
-  - 1991: Slovenia, Croatia, BiH, Serbia, Kosovo, (UN does not seem to
+-   1991: Slovenia, Croatia, BiH, Serbia, Kosovo, (UN does not seem to
     treat it separately), Montenegro
-  - 1992 and until 2006: Serbia, Kosovo, Montenegro
-
-<!-- end list -->
+-   1992 and until 2006: Serbia, Kosovo, Montenegro
 
 ``` r
 yugo <- tibble(
@@ -232,12 +230,10 @@ un <- un %>%
 
 #### USSR/Russia
 
-  - 1990 and before: Russia (365), the Baltics (366, 367, 368), Ukraine
+-   1990 and before: Russia (365), the Baltics (366, 367, 368), Ukraine
     (369), Belarus (370), Armenia (371), Georgia (372), Azerbaijan
     (373), central Asia (701, 702, 703, 704, 705)
-  - 1991 and on: 365
-
-<!-- end list -->
+-   1991 and on: 365
 
 ``` r
 ussr <- tibble(
@@ -307,9 +303,9 @@ un$pop[un$gwcode==850 & un$year <= 2001] <- ind
 Unions like GDR joining FRG are problematic and have to be fixed
 outside.
 
-  - German re-unification
-  - Yemeni unification
-  - Vietnamese unification
+-   German re-unification
+-   Yemeni unification
+-   Vietnamese unification
 
 Other discrepancies in the data:
 
@@ -330,273 +326,139 @@ gw_not_in_un %>%
 ```
 
 <table>
-
 <caption>
-
 GW CYs not in UN
-
 </caption>
-
 <thead>
-
 <tr>
-
 <th style="text-align:right;">
-
 gwcode
-
 </th>
-
 <th style="text-align:right;">
-
 seq
-
 </th>
-
 <th style="text-align:left;">
-
 years
-
 </th>
-
 <th style="text-align:left;">
-
-country\_name
-
+country_name
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:right;">
-
 265
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1990
-
 </td>
-
 <td style="text-align:left;">
-
 German Democratic Republic
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 347
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 2008 - 2020
-
 </td>
-
 <td style="text-align:left;">
-
 Kosovo
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 396
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 2008 - 2020
-
 </td>
-
 <td style="text-align:left;">
-
 Abkhazia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 397
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 2008 - 2020
-
 </td>
-
 <td style="text-align:left;">
-
 South Ossetia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 511
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1963 - 1964
-
 </td>
-
 <td style="text-align:left;">
-
 Zanzibar
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 680
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1967 - 1990
-
 </td>
-
 <td style="text-align:left;">
-
 Yemen, People’s Republic of
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 711
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1950
-
 </td>
-
 <td style="text-align:left;">
-
 Tibet
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 817
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1954 - 1975
-
 </td>
-
 <td style="text-align:left;">
-
 Vietnam, Republic of
-
 </td>
-
 </tr>
-
 </tbody>
-
 </table>
 
 ``` r
@@ -613,2625 +475,4031 @@ un_not_in_gw %>%
 ```
 
 <table>
-
 <caption>
-
 UN CYs not in GW
-
 </caption>
-
 <thead>
-
 <tr>
-
 <th style="text-align:right;">
-
 gwcode
-
 </th>
-
 <th style="text-align:right;">
-
 seq
-
 </th>
-
 <th style="text-align:left;">
-
 years
-
 </th>
-
 <th style="text-align:left;">
-
-country\_name
-
+country_name
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:right;">
-
+2
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+United States of America
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+20
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Canada
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 31
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1972
-
 </td>
-
 <td style="text-align:left;">
-
 Bahamas
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+31
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bahamas
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+40
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Cuba
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+41
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Haiti
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+42
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Dominican Republic
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 51
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1961
-
 </td>
-
 <td style="text-align:left;">
-
 Jamaica
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+51
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Jamaica
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 52
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1961
-
 </td>
-
 <td style="text-align:left;">
-
 Trinidad and Tobago
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+52
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Trinidad and Tobago
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 53
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1965
-
 </td>
-
 <td style="text-align:left;">
-
 Barbados
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+53
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Barbados
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 54
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1977
-
 </td>
-
 <td style="text-align:left;">
-
 Dominica
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+54
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Dominica
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 55
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1973
-
 </td>
-
 <td style="text-align:left;">
-
 Grenada
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+55
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Grenada
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 56
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1978
-
 </td>
-
 <td style="text-align:left;">
-
 Saint Lucia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+56
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Saint Lucia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 57
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1978
-
 </td>
-
 <td style="text-align:left;">
-
 Saint Vincent and the Grenadines
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+57
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Saint Vincent and the Grenadines
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 58
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1980
-
 </td>
-
 <td style="text-align:left;">
-
 Antigua & Barbuda
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+58
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Antigua & Barbuda
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 60
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1982
-
 </td>
-
 <td style="text-align:left;">
-
 Saint Kitts and Nevis
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+60
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Saint Kitts and Nevis
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+70
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Mexico
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 80
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1980
-
 </td>
-
 <td style="text-align:left;">
-
 Belize
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+80
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Belize
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+90
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Guatemala
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+91
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Honduras
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+92
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+El Salvador
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+93
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Nicaragua
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+94
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Costa Rica
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+95
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Panama
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+100
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Colombia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+101
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Venezuela
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 110
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1965
-
 </td>
-
 <td style="text-align:left;">
-
 Guyana
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+110
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Guyana
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 115
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Surinam
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+115
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Surinam
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+130
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Ecuador
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+135
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Peru
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+140
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Brazil
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+145
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bolivia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+150
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Paraguay
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+155
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Chile
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+160
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Argentina
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+165
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Uruguay
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+200
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+United Kingdom
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+205
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Ireland
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+210
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Netherlands
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+211
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Belgium
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+212
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Luxembourg
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+220
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+France
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+221
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Monaco
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+223
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Liechtenstein
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+225
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Switzerland
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+230
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Spain
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+232
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Andorra
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+235
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Portugal
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+260
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+German Federal Republic
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+290
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Poland
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+305
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Austria
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+310
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Hungary
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+316
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Czech Republic
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+317
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Slovakia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+325
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Italy/Sardinia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 327
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
-1950 - 2020
-
+1950 - 2021
 </td>
-
 <td style="text-align:left;">
-
 Papal States
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+331
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+San Marino
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 338
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1963
-
 </td>
-
 <td style="text-align:left;">
-
 Malta
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+338
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Malta
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+339
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Albania
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+340
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Serbia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+341
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Montenegro
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+343
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Macedonia (Former Yugoslav Republic of)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+344
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Croatia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+346
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bosnia-Herzegovina
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+349
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Slovenia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+350
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Greece
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 352
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Cyprus
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+352
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Cyprus
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+355
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bulgaria
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 359
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1990
-
 </td>
-
 <td style="text-align:left;">
-
 Moldova
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+359
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Moldova
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+360
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Romania
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+365
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Russia (Soviet Union)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+366
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Estonia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+367
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Latvia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+368
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Lithuania
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+369
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Ukraine
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+370
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Belarus (Byelorussia)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+371
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Armenia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+372
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Georgia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+373
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Azerbaijan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+375
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Finland
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+380
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Sweden
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+385
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Norway
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+390
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Denmark
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+395
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Iceland
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 402
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Cape Verde
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+402
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Cape Verde
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 403
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Sao Tome and Principe
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+403
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Sao Tome and Principe
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 404
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1973
-
 </td>
-
 <td style="text-align:left;">
-
 Guinea-Bissau
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+404
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Guinea-Bissau
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 411
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1967
-
 </td>
-
 <td style="text-align:left;">
-
 Equatorial Guinea
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+411
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Equatorial Guinea
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 420
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1964
-
 </td>
-
 <td style="text-align:left;">
-
 Gambia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+420
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Gambia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 432
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Mali
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+432
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Mali
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 433
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Senegal
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+433
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Senegal
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 434
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Benin
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+434
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Benin
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 435
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Mauritania
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+435
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Mauritania
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 436
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Niger
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+436
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Niger
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 437
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Cote D’Ivoire
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+437
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Cote D’Ivoire
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 438
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1957
-
 </td>
-
 <td style="text-align:left;">
-
 Guinea
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+438
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Guinea
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 439
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Burkina Faso (Upper Volta)
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+439
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Burkina Faso (Upper Volta)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+450
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Liberia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 451
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1960
-
 </td>
-
 <td style="text-align:left;">
-
 Sierra Leone
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+451
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Sierra Leone
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 452
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1956
-
 </td>
-
 <td style="text-align:left;">
-
 Ghana
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+452
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Ghana
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 461
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Togo
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+461
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Togo
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 471
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Cameroon
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+471
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Cameroon
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 475
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Nigeria
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+475
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Nigeria
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 481
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Gabon
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+481
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Gabon
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 482
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Central African Republic
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+482
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Central African Republic
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 483
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Chad
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+483
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Chad
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 484
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Congo
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+484
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Congo
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 490
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Congo, Democratic Republic of (Zaire)
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+490
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Congo, Democratic Republic of (Zaire)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 500
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1961
-
 </td>
-
 <td style="text-align:left;">
-
 Uganda
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+500
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Uganda
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 501
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1962
-
 </td>
-
 <td style="text-align:left;">
-
 Kenya
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+501
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Kenya
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 510
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1960
-
 </td>
-
 <td style="text-align:left;">
-
 Tanzania/Tanganyika
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+510
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Tanzania/Tanganyika
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 516
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1961
-
 </td>
-
 <td style="text-align:left;">
-
 Burundi
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+516
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Burundi
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 517
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1961
-
 </td>
-
 <td style="text-align:left;">
-
 Rwanda
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+517
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Rwanda
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 520
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Somalia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+520
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Somalia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 522
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1976
-
 </td>
-
 <td style="text-align:left;">
-
 Djibouti
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+522
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Djibouti
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+530
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Ethiopia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 531
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1992
-
 </td>
-
 <td style="text-align:left;">
-
 Eritrea
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+531
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Eritrea
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 540
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Angola
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+540
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Angola
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 541
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Mozambique
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+541
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Mozambique
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 551
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1963
-
 </td>
-
 <td style="text-align:left;">
-
 Zambia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+551
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Zambia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 552
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1964
-
 </td>
-
 <td style="text-align:left;">
-
 Zimbabwe (Rhodesia)
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+552
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Zimbabwe (Rhodesia)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 553
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1963
-
 </td>
-
 <td style="text-align:left;">
-
 Malawi
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+553
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Malawi
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+560
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+South Africa
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 565
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1989
-
 </td>
-
 <td style="text-align:left;">
-
 Namibia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+565
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Namibia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 570
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1965
-
 </td>
-
 <td style="text-align:left;">
-
 Lesotho
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+570
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Lesotho
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 571
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1965
-
 </td>
-
 <td style="text-align:left;">
-
 Botswana
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+571
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Botswana
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 572
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1967
-
 </td>
-
 <td style="text-align:left;">
-
 Swaziland
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+572
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Swaziland
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 580
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1959
-
 </td>
-
 <td style="text-align:left;">
-
 Madagascar
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+580
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Madagascar
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 581
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Comoros
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+581
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Comoros
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 590
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1967
-
 </td>
-
 <td style="text-align:left;">
-
 Mauritius
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+590
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Mauritius
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 591
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1975
-
 </td>
-
 <td style="text-align:left;">
-
 Seychelles
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+591
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Seychelles
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 600
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1955
-
 </td>
-
 <td style="text-align:left;">
-
 Morocco
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+600
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Morocco
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 615
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1961
-
 </td>
-
 <td style="text-align:left;">
-
 Algeria
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+615
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Algeria
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 616
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1955
-
 </td>
-
 <td style="text-align:left;">
-
 Tunisia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+616
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Tunisia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 620
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1950
-
 </td>
-
 <td style="text-align:left;">
-
 Libya
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+620
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Libya
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 625
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1955
-
 </td>
-
 <td style="text-align:left;">
-
 Sudan
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+625
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Sudan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 626
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 2010
-
 </td>
-
 <td style="text-align:left;">
-
 South Sudan
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+626
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+South Sudan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+630
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Iran (Persia)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+640
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Turkey (Ottoman Empire)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+645
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Iraq
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+651
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Egypt
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+652
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Syria
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+660
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Lebanon
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+663
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Jordan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+666
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Israel
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+670
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Saudi Arabia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+678
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Yemen (Arab Republic of Yemen)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 690
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1960
-
 </td>
-
 <td style="text-align:left;">
-
 Kuwait
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+690
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Kuwait
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 692
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1970
-
 </td>
-
 <td style="text-align:left;">
-
 Bahrain
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+692
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bahrain
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 694
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1970
-
 </td>
-
 <td style="text-align:left;">
-
 Qatar
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+694
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Qatar
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 696
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1970
-
 </td>
-
 <td style="text-align:left;">
-
 United Arab Emirates
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+696
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+United Arab Emirates
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+698
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Oman
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+700
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Afghanistan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+701
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Turkmenistan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+702
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Tajikistan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+703
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Kyrgyz Republic
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+704
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Uzbekistan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+705
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Kazakhstan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+710
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+China
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+712
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Mongolia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+713
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Taiwan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+731
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Korea, People’s Republic of
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+732
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Korea, Republic of
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+740
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Japan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+750
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+India
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+760
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bhutan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+770
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Pakistan
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 771
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1970
-
 </td>
-
 <td style="text-align:left;">
-
 Bangladesh
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+771
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Bangladesh
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+775
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Myanmar (Burma)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+780
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Sri Lanka (Ceylon)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 781
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1964
-
 </td>
-
 <td style="text-align:left;">
-
 Maldives
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+781
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Maldives
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+790
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Nepal
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+800
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Thailand
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 811
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1952
-
 </td>
-
 <td style="text-align:left;">
-
 Cambodia (Kampuchea)
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+811
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Cambodia (Kampuchea)
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 812
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1953
-
 </td>
-
 <td style="text-align:left;">
-
 Laos
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+812
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Laos
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 816
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1953
-
 </td>
-
 <td style="text-align:left;">
-
 Vietnam, Democratic Republic of
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+816
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Vietnam, Democratic Republic of
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 820
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1956
-
 </td>
-
 <td style="text-align:left;">
-
 Malaysia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+820
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Malaysia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 830
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1964
-
 </td>
-
 <td style="text-align:left;">
-
 Singapore
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+830
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Singapore
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 835
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1983
-
 </td>
-
 <td style="text-align:left;">
-
 Brunei
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+835
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Brunei
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+840
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Philippines
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+850
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Indonesia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 860
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 2001
-
 </td>
-
 <td style="text-align:left;">
-
 East Timor
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+860
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+East Timor
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+900
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Australia
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 910
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1974
-
 </td>
-
 <td style="text-align:left;">
-
 Papua New Guinea
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+910
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Papua New Guinea
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+920
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+New Zealand
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 935
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1979
-
 </td>
-
 <td style="text-align:left;">
-
 Vanuatu
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+935
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Vanuatu
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 940
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1977
-
 </td>
-
 <td style="text-align:left;">
-
 Solomon Islands
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+940
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Solomon Islands
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 950
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1969
-
 </td>
-
 <td style="text-align:left;">
-
 Fiji
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+950
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Fiji
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 970
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1978
-
 </td>
-
 <td style="text-align:left;">
-
 Kiribati
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+970
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Kiribati
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 971
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1967
-
 </td>
-
 <td style="text-align:left;">
-
 Nauru
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+971
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Nauru
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 972
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1969
-
 </td>
-
 <td style="text-align:left;">
-
 Tonga
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+972
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Tonga
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 973
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1977
-
 </td>
-
 <td style="text-align:left;">
-
 Tuvalu
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+973
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Tuvalu
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 983
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1985
-
 </td>
-
 <td style="text-align:left;">
-
 Marshall Islands
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+983
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Marshall Islands
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 986
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1993
-
 </td>
-
 <td style="text-align:left;">
-
 Palau
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
+986
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Palau
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
 987
-
 </td>
-
 <td style="text-align:right;">
-
 1
-
 </td>
-
 <td style="text-align:left;">
-
 1950 - 1985
-
 </td>
-
 <td style="text-align:left;">
-
 Federated States of Micronesia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
-990
-
+987
 </td>
-
 <td style="text-align:right;">
-
-1
-
+2
 </td>
-
 <td style="text-align:left;">
-
-1950 - 1961
-
+2021 - 2021
 </td>
-
 <td style="text-align:left;">
-
-Samoa/Western Samoa
-
+Federated States of Micronesia
 </td>
-
 </tr>
-
+<tr>
+<td style="text-align:right;">
+990
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+1950 - 1961
+</td>
+<td style="text-align:left;">
+Samoa/Western Samoa
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+990
+</td>
+<td style="text-align:right;">
+2
+</td>
+<td style="text-align:left;">
+2021 - 2021
+</td>
+<td style="text-align:left;">
+Samoa/Western Samoa
+</td>
+</tr>
 </tbody>
-
 </table>
 
 ``` r
@@ -3275,7 +4543,7 @@ ggplot(joint, aes(x = year, y = pop, group = interaction(gwcode, source),
   theme_minimal()
 ```
 
-    ## Warning: Removed 25138 row(s) containing missing values (geom_path).
+    ## Warning: Removed 25336 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
@@ -3342,7 +4610,7 @@ joint %>%
   theme_minimal()
 ```
 
-    ## Warning: Removed 17 row(s) containing missing values (geom_path).
+    ## Warning: Removed 18 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
@@ -3413,7 +4681,7 @@ joint_wide %>%
   filter(gwcode==265 & year > 1985 & year < 1995)
 ```
 
-    ## # A tibble: 5 x 7
+    ## # A tibble: 5 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    265  1986          0 FALSE     16624     NA      NA
@@ -3436,7 +4704,7 @@ joint_wide %>%
   filter(gwcode==816 & year > 1970 & year < 1980)
 ```
 
-    ## # A tibble: 9 x 7
+    ## # A tibble: 9 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    816  1971          0 FALSE     21595  44484     NA 
@@ -3461,7 +4729,7 @@ joint_wide %>%
   filter(gwcode==817 & year > 1970 & year < 1980)
 ```
 
-    ## # A tibble: 5 x 7
+    ## # A tibble: 5 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    817  1971          0 FALSE     18810     NA      NA
@@ -3484,7 +4752,7 @@ joint_wide %>%
   filter(gwcode==678 & year > 1985 & year < 1995)
 ```
 
-    ## # A tibble: 9 x 7
+    ## # A tibble: 9 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    678  1986          0 FALSE      7911   9941     NA 
@@ -3509,7 +4777,7 @@ joint_wide %>%
   filter(gwcode==680 & year > 1985 & year < 1995)
 ```
 
-    ## # A tibble: 5 x 7
+    ## # A tibble: 5 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    680  1986          0 FALSE      2220     NA      NA
@@ -3532,7 +4800,7 @@ joint_wide %>%
   filter(gwcode==347 & year > 2006 & year < 2015)
 ```
 
-    ## # A tibble: 7 x 7
+    ## # A tibble: 7 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    347  2008         NA FALSE        NA     NA   1747.
@@ -3561,7 +4829,7 @@ joint_wide %>%
   filter(gwcode==711 & year > 1945 & year < 1955)
 ```
 
-    ## # A tibble: 5 x 7
+    ## # A tibble: 5 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    711  1946          2 FALSE     1708.     NA      NA
@@ -3586,7 +4854,7 @@ joint_wide %>%
   filter(gwcode==315 & year < 1921)
 ```
 
-    ## # A tibble: 2 x 7
+    ## # A tibble: 2 × 7
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
     ## 1    315  1919          0 FALSE     13398     NA      NA
@@ -3597,7 +4865,7 @@ pop %>%
   filter(gwcode==315 & year < 1921)
 ```
 
-    ## # A tibble: 3 x 10
+    ## # A tibble: 3 × 10
     ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi   pop source gw   
     ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl> <dbl> <chr>  <lgl>
     ## 1    315  1919          0 FALSE     13398     NA      NA 13398 ksg    TRUE 
@@ -3681,127 +4949,66 @@ pop %>%
 ```
 
 <table>
-
 <thead>
-
 <tr>
-
 <th style="text-align:right;">
-
 gwcode
-
 </th>
-
 <th style="text-align:left;">
-
 years
-
 </th>
-
 <th style="text-align:right;">
-
 N
-
 </th>
-
 <th style="text-align:left;">
-
-country\_name
-
+country_name
 </th>
-
 </tr>
-
 </thead>
-
 <tbody>
-
 <tr>
-
 <td style="text-align:right;">
-
 396
-
 </td>
-
 <td style="text-align:left;">
-
-2008 - 2020
-
+2008 - 2021
 </td>
-
 <td style="text-align:right;">
-
-13
-
+14
 </td>
-
 <td style="text-align:left;">
-
 Abkhazia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 397
-
 </td>
-
 <td style="text-align:left;">
-
-2008 - 2020
-
+2008 - 2021
 </td>
-
 <td style="text-align:right;">
-
-13
-
+14
 </td>
-
 <td style="text-align:left;">
-
 South Ossetia
-
 </td>
-
 </tr>
-
 <tr>
-
 <td style="text-align:right;">
-
 511
-
 </td>
-
 <td style="text-align:left;">
-
 1963 - 1964
-
 </td>
-
 <td style="text-align:right;">
-
 2
-
 </td>
-
 <td style="text-align:left;">
-
 Zanzibar
-
 </td>
-
 </tr>
-
 </tbody>
-
 </table>
 
 ``` r
@@ -3813,4 +5020,4 @@ pop %>%
     ## Warning: The `path` argument of `write_csv()` is deprecated as of readr 1.4.0.
     ## Please use the `file` argument instead.
     ## This warning is displayed once every 8 hours.
-    ## Call `lifecycle::last_warnings()` to see where this warning was generated.
+    ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.
