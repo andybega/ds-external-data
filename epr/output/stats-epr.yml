@@ -1,0 +1,7 @@
+rows: 11916
+cols: 10
+complete_rows: 10838
+year_coverage: 1946 - 2021
+n_countries: 181
+col_names: gwcode, year, epr_groups, epr_elf, epr_excluded_groups_count, epr_excluded_group_pop,
+  epr_inpower_groups_count, epr_inpower_groups_pop, epr_regaut_groups_count, epr_regaut_group_pop

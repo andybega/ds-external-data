@@ -1,0 +1,123 @@
+---
+title: "Clean EPR data"
+output: 
+  github_document:
+    toc: yes
+---
+
+*Last compiled on: `r Sys.Date()`*
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages({
+  library(dplyr)
+  library(states)
+  library(readr)
+  library(tidyr)
+  library(tibble)
+  library(yaml)
+})
+```
+
+```{r}
+raw <- read_csv("data-raw/EPR-2021.csv",
+                col_types = cols(
+                  gwid = col_integer(),
+                  statename = col_character(),
+                  from = col_integer(),
+                  to = col_integer(),
+                  group = col_character(),
+                  groupid = col_double(),
+                  gwgroupid = col_double(),
+                  umbrella = col_integer(),
+                  size = col_double(),
+                  status = col_character(),
+                  reg_aut = col_logical()
+                ))
+
+raw <- raw %>%
+    rename(gwcode = gwid) %>%
+    mutate(reg_aut = case_when(
+      is.na(reg_aut) ~ FALSE,
+      TRUE ~ reg_aut
+    ))
+  raw
+```
+
+```{r}
+# convert to country-year
+epr <- raw %>%
+  dplyr::mutate(year = min(raw$from)) %>%
+  tidyr::complete(year = seq(min(from), max(to)),
+                  nesting(gwcode, from, to, group, groupid, size, status, reg_aut)) %>%
+  dplyr::filter(year >= from & year <= to)
+
+# not clear about irrelevant and state collapse
+excl_val <- c("POWERLESS", "DISCRIMINATED", "SELF-EXCLUSION")
+incl_val <- c("MONOPOLY", "DOMINANT", "JUNIOR PARTNER", "SENIOR PARTNER",
+              "IRRELEVANT", "STATE COLLAPSE")
+
+epr <- epr %>%
+  group_by(gwcode, year) %>%
+  dplyr::summarize(
+    groups = n(),
+    elf    = sum(size^2),
+    excluded_groups_count = sum(status %in% excl_val),
+    excluded_group_pop    = sum(subset(size, status %in% excl_val)),
+    inpower_groups_count  = sum(status %in% incl_val),
+    inpower_groups_pop    = sum(subset(size, status %in% incl_val)),
+    regaut_groups_count = sum(reg_aut %in% TRUE),
+    regaut_group_pop    = sum(subset(size, reg_aut %in% TRUE))
+  )
+
+master <- state_panel(min(epr$year), max(epr$year), by = "year", partial = "any")
+
+comp <- states::compare(epr, master)
+report(comp)
+```
+
+The following cases are not present in the country-year EPR data:
+
+```{r}
+data(gwstates)
+
+comp %>% 
+  filter(case_in_df1==0, case_in_df2==1) %>%
+  group_by(gwcode) %>%
+  summarize(n = n(), years = paste0(min(year), "-", max(year))) %>%
+  left_join(gwstates[, c("gwcode", "country_name", "microstate")]) %>%
+  mutate(microstate = as.integer(microstate)) %>%
+  select(country_name, everything()) %>%
+  knitr::kable()
+```
+
+All are microstates. So this is ok. 
+
+```{r}
+epr <- left_join(master, epr)
+
+sapply(epr, function(x) sum(is.na(x))) %>%
+  enframe(name = "Variable", value = "N_missing")
+
+# Add 'epr_' prefix to non-ID columns
+idx <- !colnames(epr) %in% c("gwcode", "year")
+colnames(epr)[idx] <- paste0("epr_", colnames(epr)[idx])
+```
+
+
+```{r}
+stats <- list(
+  rows = nrow(epr),
+  cols = ncol(epr),
+  complete_rows = sum(complete.cases(epr)),
+  year_coverage = paste0(range(epr$year), collapse = " - "),
+  n_countries = length(unique(epr[complete.cases(epr), ][["gwcode"]])),
+  col_names = paste0(colnames(epr), collapse = ", ")
+)
+
+write_yaml(stats, "output/stats-epr.yml")
+
+write_csv(epr, "output/epr.csv")
+```
+
