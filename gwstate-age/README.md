@@ -1,6 +1,8 @@
 GW state age
 ================
 
+*Last updated on 2022-02-19*
+
 State age, i.e. time since independence or 1816.
 
 ``` r
@@ -21,7 +23,7 @@ head(gwstates)
 str(gwstates)
 ```
 
-    ## 'data.frame':    19864 obs. of  3 variables:
+    ## 'data.frame':    20061 obs. of  3 variables:
     ##  $ gwcode   : int  2 2 2 2 2 2 2 2 2 2 ...
     ##  $ year     : int  1816 1817 1818 1819 1820 1821 1822 1823 1824 1825 ...
     ##  $ state_age: int  1 2 3 4 5 6 7 8 9 10 ...
@@ -30,4 +32,4 @@ str(gwstates)
 range(gwstates$year)
 ```
 
-    ## [1] 1816 2020
+    ## [1] 1816 2021

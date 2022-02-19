@@ -1,9 +1,9 @@
-G\&W states
+G&W states
 ================
 
-*Last updated on: 2021-03-02*
+*Last updated on: 2022-02-19*
 
-G\&W states list, and derived indicators like state age.
+G&W states list, and derived indicators like state age.
 
 ``` r
 library(states)
@@ -42,7 +42,7 @@ to_year <- year(Sys.Date()) - 1
 to_year
 ```
 
-    ## [1] 2020
+    ## [1] 2021
 
 ``` r
 out <- state_panel(lubridate::year(min(gwstates$start)), to_year, 
