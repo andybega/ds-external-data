@@ -1,23 +1,23 @@
 GDP imputation
 ================
-Andreas Beger, Predictive Heuristics
-2021-03-03
+Andreas Beger, Basil Analytics
+2022-02-07
 
-  - [WDI GDP data](#wdi-gdp-data)
-  - [KSG expanded GDP](#ksg-expanded-gdp)
-  - [UN GDP data](#un-gdp-data)
-  - [Combine data](#combine-data)
-  - [Overlap between UN and WDI](#overlap-between-un-and-wdi)
-  - [Overlap between KSG expanded and
+-   [WDI GDP data](#wdi-gdp-data)
+-   [KSG expanded GDP](#ksg-expanded-gdp)
+-   [UN GDP data](#un-gdp-data)
+-   [Combine data](#combine-data)
+-   [Overlap between UN and WDI](#overlap-between-un-and-wdi)
+-   [Overlap between KSG expanded and
     WDI](#overlap-between-ksg-expanded-and-wdi)
-  - [Joint model of UN and KSG predicting
+-   [Joint model of UN and KSG predicting
     WDI](#joint-model-of-un-and-ksg-predicting-wdi)
-  - [Conclusion](#conclusion)
-  - [Check GDP per capita](#check-gdp-per-capita)
-  - [Done, record summary stats and
+-   [Conclusion](#conclusion)
+-   [Check GDP per capita](#check-gdp-per-capita)
+-   [Done, record summary stats and
     save](#done-record-summary-stats-and-save)
 
-*Last updated on: 2021-03-03*
+*Last updated on: 2022-02-07*
 
 For updating the data, all items requiring attention are marked with
 “UPDATE:”.
@@ -98,18 +98,16 @@ ksggdp <- read_delim("input/expgdpv6.0/gdpv6.txt", delim = "\t") %>%
   select(-stateid)
 ```
 
-    ## 
+    ## Rows: 9627 Columns: 8
+
     ## ── Column specification ────────────────────────────────────────────────────────
-    ## cols(
-    ##   statenum = col_double(),
-    ##   stateid = col_character(),
-    ##   year = col_double(),
-    ##   pop = col_double(),
-    ##   realgdp = col_double(),
-    ##   rgdppc = col_double(),
-    ##   cgdppc = col_double(),
-    ##   origin = col_double()
-    ## )
+    ## Delimiter: "\t"
+    ## chr (1): stateid
+    ## dbl (7): statenum, year, pop, realgdp, rgdppc, cgdppc, origin
+
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
 plot_missing(ksggdp, "realgdp", "gwcode", time = "year", statelist = "GW")
@@ -124,17 +122,16 @@ ungdp <- read_csv("input/UNgdpData.csv") %>%
   select(country_name, country_id, year, gdp_2010USD) 
 ```
 
-    ## 
+    ## Rows: 8272 Columns: 7
+
     ## ── Column specification ────────────────────────────────────────────────────────
-    ## cols(
-    ##   country_name = col_character(),
-    ##   country_id = col_double(),
-    ##   year = col_double(),
-    ##   gdp_2010USD = col_double(),
-    ##   gdp_2010USD_log = col_double(),
-    ##   gdp_2010USD_lagged = col_double(),
-    ##   gdp_2010USD_log_lagged = col_double()
-    ## )
+    ## Delimiter: ","
+    ## chr (1): country_name
+    ## dbl (6): country_id, year, gdp_2010USD, gdp_2010USD_log, gdp_2010USD_lagged,...
+
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
 ungdp <- gdp_un_add_gwcode(ungdp)  
@@ -168,13 +165,13 @@ The UN GDP data is almost completely correlated with WDI GDP.
 sum(complete.cases(joint[, c("gdp_2010USD", "NY.GDP.MKTP.KD")]))
 ```
 
-    ## [1] 6682
+    ## [1] 6592
 
 ``` r
 cor(joint$gdp_2010USD, joint$NY.GDP.MKTP.KD, use = "complete.obs")
 ```
 
-    ## [1] 0.9999075
+    ## [1] 0.991198
 
 ``` r
 plot(log10(joint$gdp_2010USD), log10(joint$NY.GDP.MKTP.KD))
@@ -195,14 +192,14 @@ joint %>%
 
     ## `summarise()` has grouped output by 'un_gdp_missing'. You can override using the `.groups` argument.
 
-    ## # A tibble: 4 x 3
+    ## # A tibble: 4 × 3
     ## # Groups:   un_gdp_missing [2]
     ##   un_gdp_missing wdi_gdp_missing     n
     ##   <lgl>          <lgl>           <int>
-    ## 1 FALSE          FALSE            6682
-    ## 2 FALSE          TRUE              827
-    ## 3 TRUE           FALSE            1986
-    ## 4 TRUE           TRUE             1905
+    ## 1 FALSE          FALSE            6592
+    ## 2 FALSE          TRUE              917
+    ## 3 TRUE           FALSE            2151
+    ## 4 TRUE           TRUE             1740
 
 For which countries? Somalia, Syria, …
 
@@ -215,14 +212,14 @@ adds <- joint %>%
 head(arrange(adds, desc(adds)))
 ```
 
-    ## # A tibble: 6 x 2
+    ## # A tibble: 6 × 2
     ##   gwcode  adds
     ##    <dbl> <int>
-    ## 1    520    47
-    ## 2    652    47
-    ## 3    731    47
-    ## 4    522    39
-    ## 5    345    37
+    ## 1    101    47
+    ## 2    731    47
+    ## 3    520    43
+    ## 4    345    37
+    ## 5    522    36
     ## 6    700    32
 
 ``` r
@@ -245,7 +242,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 953 row(s) containing missing values (geom_path).
+    ## Warning: Removed 852 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
@@ -261,7 +258,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 1206 row(s) containing missing values (geom_path).
+    ## Warning: Removed 1220 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
 
@@ -274,25 +271,25 @@ basically 1 and so is the coefficient.
 sum(complete.cases(joint[, c("realgdp", "NY.GDP.MKTP.PP.KD")]))
 ```
 
-    ## [1] 3780
+    ## [1] 3758
 
 ``` r
 cor(joint$realgdp, joint$NY.GDP.MKTP.PP.KD, use = "complete.obs")
 ```
 
-    ## [1] 0.9932913
+    ## [1] 0.9933362
 
 ``` r
 sum(complete.cases(joint[, c("realgdp", "NY.GDP.MKTP.KD")]))
 ```
 
-    ## [1] 7187
+    ## [1] 7055
 
 ``` r
 cor(joint$realgdp, joint$NY.GDP.MKTP.KD, use = "complete.obs")
 ```
 
-    ## [1] 0.9598988
+    ## [1] 0.9697783
 
 Plain linear rescaling doesn’t work well.
 
@@ -308,18 +305,18 @@ summary(mdl)
     ## 
     ## Residuals:
     ##        Min         1Q     Median         3Q        Max 
-    ## -4.665e+12 -1.086e+10 -1.612e+09  9.187e+08  1.681e+12 
+    ## -3.531e+12 -1.542e+10 -2.201e+09  3.701e+08  2.254e+12 
     ## 
     ## Coefficients:
     ##         Estimate Std. Error t value Pr(>|t|)    
-    ## realgdp 1.045011   0.003482   300.1   <2e-16 ***
+    ## realgdp 1.088639   0.003185   341.8   <2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 2.61e+11 on 7186 degrees of freedom
-    ##   (4213 observations deleted due to missingness)
-    ## Multiple R-squared:  0.9261, Adjusted R-squared:  0.9261 
-    ## F-statistic: 9.007e+04 on 1 and 7186 DF,  p-value: < 2.2e-16
+    ## Residual standard error: 2.385e+11 on 7054 degrees of freedom
+    ##   (4345 observations deleted due to missingness)
+    ## Multiple R-squared:  0.9431, Adjusted R-squared:  0.943 
+    ## F-statistic: 1.168e+05 on 1 and 7054 DF,  p-value: < 2.2e-16
 
 ``` r
 joint <- joint %>%
@@ -335,7 +332,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 981 row(s) containing missing values (geom_path).
+    ## Warning: Removed 980 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
@@ -364,19 +361,19 @@ summary(mdl)
     ## lm(formula = log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp), data = joint)
     ## 
     ## Residuals:
-    ##      Min       1Q   Median       3Q      Max 
-    ## -2.36460 -0.32602 -0.01405  0.35826  3.06128 
+    ##     Min      1Q  Median      3Q     Max 
+    ## -2.1900 -0.3218 -0.0140  0.3792  3.1905 
     ## 
     ## Coefficients:
-    ##              Estimate Std. Error t value Pr(>|t|)    
-    ## log(realgdp) 0.992004   0.000261    3801   <2e-16 ***
+    ##               Estimate Std. Error t value Pr(>|t|)    
+    ## log(realgdp) 0.9913572  0.0002618    3786   <2e-16 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 0.5307 on 7186 degrees of freedom
-    ##   (4213 observations deleted due to missingness)
+    ## Residual standard error: 0.5269 on 7054 degrees of freedom
+    ##   (4345 observations deleted due to missingness)
     ## Multiple R-squared:  0.9995, Adjusted R-squared:  0.9995 
-    ## F-statistic: 1.444e+07 on 1 and 7186 DF,  p-value: < 2.2e-16
+    ## F-statistic: 1.434e+07 on 1 and 7054 DF,  p-value: < 2.2e-16
 
 ``` r
 joint <- joint %>%
@@ -392,7 +389,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 1080 row(s) containing missing values (geom_path).
+    ## Warning: Removed 1070 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
@@ -419,7 +416,7 @@ mdl <- lmer(log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp) + (log(realgdp)|gwcode), dat
 ```
 
     ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, :
-    ## Model failed to converge with max|grad| = 0.00210299 (tol = 0.002, component 1)
+    ## Model failed to converge with max|grad| = 0.274663 (tol = 0.002, component 1)
 
 ``` r
 joint <- joint %>%
@@ -436,7 +433,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 981 row(s) containing missing values (geom_path).
+    ## Warning: Removed 980 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
@@ -461,7 +458,7 @@ mdl_combo <- lmer(log(NY.GDP.MKTP.KD) ~ -1 + log(gdp_2010USD) + log(realgdp) + (
 ```
 
     ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, :
-    ## Model failed to converge with max|grad| = 0.00588529 (tol = 0.002, component 1)
+    ## Model failed to converge with max|grad| = 0.00526907 (tol = 0.002, component 1)
 
 ``` r
 joint <- joint %>%
@@ -478,7 +475,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 1162 row(s) containing missing values (geom_path).
+    ## Warning: Removed 1175 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
@@ -495,7 +492,7 @@ joint %>%
     ## Warning: attributes are not identical across measure variables;
     ## they will be dropped
 
-    ## Warning: Removed 998 row(s) containing missing values (geom_path).
+    ## Warning: Removed 892 row(s) containing missing values (geom_path).
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->
 
@@ -522,10 +519,8 @@ Check leftover missing values before impute:
 joint <- gdp_get_yearly(impute = FALSE)
 ```
 
-    ## Year(s)  2020 are complete missing, droping
-
     ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, :
-    ## Model failed to converge with max|grad| = 0.00210299 (tol = 0.002, component 1)
+    ## Model failed to converge with max|grad| = 0.274663 (tol = 0.002, component 1)
 
 ``` r
 plot_missing(joint, "NY.GDP.MKTP.KD", "gwcode", time = "year", statelist = "GW")
@@ -543,27 +538,24 @@ still_missing <- joint %>%
 still_missing
 ```
 
-    ## # A tibble: 18 x 3
+    ## # A tibble: 15 × 3
     ##    gwcode     n years      
     ##     <dbl> <int> <chr>      
-    ##  1    223     8 2012 - 2019
-    ##  2    396     8 2012 - 2019
-    ##  3    397     8 2012 - 2019
-    ##  4    713     8 2012 - 2019
-    ##  5    101     3 2017 - 2019
-    ##  6    520     3 2017 - 2019
-    ##  7    522     3 2017 - 2019
-    ##  8    531     3 2017 - 2019
-    ##  9    565     3 2017 - 2019
-    ## 10    626     3 2017 - 2019
-    ## 11    652     3 2017 - 2019
-    ## 12    731     3 2017 - 2019
-    ## 13     40     1 2019 - 2019
-    ## 14    221     1 2019 - 2019
-    ## 15    331     1 2019 - 2019
-    ## 16    701     1 2019 - 2019
-    ## 17    983     1 2019 - 2019
-    ## 18    987     1 2019 - 2019
+    ##  1    396     9 2012 - 2020
+    ##  2    397     9 2012 - 2020
+    ##  3    713     9 2012 - 2020
+    ##  4    223     8 2012 - 2020
+    ##  5    101     4 2017 - 2020
+    ##  6    531     4 2017 - 2020
+    ##  7    565     4 2017 - 2020
+    ##  8    626     4 2017 - 2020
+    ##  9    731     4 2017 - 2020
+    ## 10    678     2 2019 - 2020
+    ## 11    221     1 2020 - 2020
+    ## 12    331     1 2020 - 2020
+    ## 13    652     1 2020 - 2020
+    ## 14    698     1 2020 - 2020
+    ## 15    701     1 2020 - 2020
 
 Use Kalman smoothing to extrapolate the leftover trailing missing
 values, and backwards extrapolate first year missing GDP growth.
@@ -572,16 +564,8 @@ values, and backwards extrapolate first year missing GDP growth.
 joint <- gdp_get_yearly(impute = TRUE)
 ```
 
-    ## Year(s)  2020 are complete missing, droping
-
     ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, :
-    ## Model failed to converge with max|grad| = 0.00210299 (tol = 0.002, component 1)
-
-    ## Warning in stats::StructTS(data, ...): possible convergence problem: 'optim'
-    ## gave code = 52 and message 'ERROR: ABNORMAL_TERMINATION_IN_LNSRCH'
-    
-    ## Warning in stats::StructTS(data, ...): possible convergence problem: 'optim'
-    ## gave code = 52 and message 'ERROR: ABNORMAL_TERMINATION_IN_LNSRCH'
+    ## Model failed to converge with max|grad| = 0.274663 (tol = 0.002, component 1)
 
 ``` r
 plot_missing(joint, "NY.GDP.MKTP.KD", "gwcode", time = "year", statelist = "GW")
@@ -641,7 +625,7 @@ stats
     ## [1] 204
     ## 
     ## $Years
-    ## [1] "1950 - 2019"
+    ## [1] "1950 - 2020"
     ## 
     ## $N_columns
     ## [1] 6
@@ -650,10 +634,10 @@ stats
     ## [1] "gwcode, year, NY.GDP.MKTP.KD, NY.GDP.MKTP.KD.ZG, NY.GDP.PCAP.KD, NY.GDP.PCAP.KD.ZG"
     ## 
     ## $N_rows
-    ## [1] 11203
+    ## [1] 11400
     ## 
     ## $N_complete_rows
-    ## [1] 11175
+    ## [1] 11370
 
 ``` r
 write_csv(joint, file = "output/gdp.csv")

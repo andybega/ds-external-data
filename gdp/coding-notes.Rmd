@@ -1,6 +1,6 @@
 ---
 title: "GDP imputation"
-author: "Andreas Beger, Predictive Heuristics"
+author: "Andreas Beger, Basil Analytics"
 date: "`r Sys.Date()`"
 output: 
   github_document: 
