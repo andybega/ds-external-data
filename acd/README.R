@@ -1,9 +1,12 @@
 #' ---
 #' title: "Armed Conflict Dataset (ACD)"
-#' date: "`r format(Sys.Date())`"
+#' author: "Author: Andreas Beger\n\n"
+#' date: "`r paste0('Last updated on: ', format(Sys.Date(), '%d %B %Y'))`"
 #' output:
 #'   github_document
 #' ---
+
+
 
 #
 #   Clean for format the ACD country-year data
@@ -19,9 +22,9 @@ suppressPackageStartupMessages({
   library(readr)
 })
 
-setwd(here("create-data/external-data/acd"))
+setwd(here("acd"))
 
-raw <- read_csv("ucdp-prio-acd-201.csv", col_types = cols())
+raw <- read_csv("input/v21.1/ucdp-prio-acd-211.csv", col_types = cols())
 
 raw <- raw %>%
   dplyr::mutate_at(vars(dplyr::contains("date")), as.Date)
@@ -75,6 +78,7 @@ acd <- raw %>%
 nrow(acd)
 # v19.1: 2384
 # v20.1: 2448
+# v21.1: 2506
 
 acd <- acd %>%
   separate_rows(gwno_a, sep = "[, ]+") %>%
@@ -86,6 +90,7 @@ acd <- acd %>%
 nrow(acd)
 # v19.1: 4341
 # v20.1: 4546
+# v21.1: 4803
 
 # This should not give any warnings about inducing NA's
 acd$gwno_a <- as.integer(acd$gwno_a)
@@ -111,6 +116,7 @@ acd <-acd %>%
 nrow(acd)
 # v19.1: 6,977
 # v20.1: 7,271
+# v21.1: 7,635
 # acd is now by participant-conflict-role-year
 
 # Create a template statelist
@@ -220,7 +226,7 @@ any_conflict <- any_conflict %>%
                 any_conflict_minor = as.integer(intensity_level==1)) %>%
   dplyr::select(-intensity_level) %>%
   dplyr::group_by(gwcode, year) %>%
-  dplyr::summarize_all(funs(max))
+  dplyr::summarize_all(list(~max(.)))
 
 gw <- dplyr::left_join(gw, any_conflict, by = c("gwcode", "year")) %>%
   tidyr::replace_na(list(any_conflict = 0, any_conflict_major = 0,
@@ -253,7 +259,7 @@ ext_conf <- ext_conf %>%
                 ext_conf_minor = as.integer(intensity_level==1)) %>%
   dplyr::select(-intensity_level) %>%
   dplyr::group_by(gwcode, year) %>%
-  dplyr::summarize_all(funs(max))
+  dplyr::summarize_all(list(~max(.)))
 
 gw <- dplyr::left_join(gw, ext_conf, by = c("gwcode", "year")) %>%
   tidyr::replace_na(list(ext_conf = 0, ext_conf_major = 0,
@@ -295,8 +301,8 @@ dim(acd)
 table(complete.cases(acd))
 range(acd$year)
 
-readr::write_rds(acd, "acd.rds")
-readr::write_csv(acd, "acd.csv")
+readr::write_rds(acd, "output/acd.rds")
+readr::write_csv(acd, "output/acd.csv")
 
 knitr::kable(codebook)
 

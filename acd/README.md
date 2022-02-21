@@ -1,7 +1,8 @@
 Armed Conflict Dataset (ACD)
 ================
-andybega
-2021-03-12
+Author: Andreas Beger
+
+Last updated on: 21 February 2022
 
 ``` r
 #
@@ -18,9 +19,9 @@ suppressPackageStartupMessages({
   library(readr)
 })
 
-setwd(here("create-data/external-data/acd"))
+setwd(here("acd"))
 
-raw <- read_csv("ucdp-prio-acd-201.csv", col_types = cols())
+raw <- read_csv("input/v21.1/ucdp-prio-acd-211.csv", col_types = cols())
 
 raw <- raw %>%
   dplyr::mutate_at(vars(dplyr::contains("date")), as.Date)
@@ -29,7 +30,7 @@ raw <- raw %>%
 range(raw$year)
 ```
 
-    ## [1] 1946 2019
+    ## [1] 1946 2020
 
 ``` r
 # The raw data are organized by conflict-year, and lists for each year the
@@ -45,37 +46,37 @@ raw %>%
   print(n = 100)
 ```
 
-    ## # A tibble: 28 x 2
-    ##    name              value                                                      
-    ##    <chr>             <chr>                                                      
-    ##  1 conflict_id       333                                                        
-    ##  2 location          Afghanistan                                                
-    ##  3 side_a            Government of Afghanistan                                  
-    ##  4 side_a_id         130                                                        
-    ##  5 side_a_2nd        Government of Russia (Soviet Union)                        
-    ##  6 side_b            Harakat-i Inqilab-i Islami-yi Afghanistan , Hizb-i Islami-…
-    ##  7 side_b_id         293, 299, 294, 297, 295, 292, 296                          
-    ##  8 side_b_2nd        <NA>                                                       
-    ##  9 incompatibility   2                                                          
-    ## 10 territory_name    <NA>                                                       
-    ## 11 year              1987                                                       
-    ## 12 intensity_level   2                                                          
-    ## 13 cumulative_inten… 1                                                          
-    ## 14 type_of_conflict  4                                                          
-    ## 15 start_date        1975-07-02                                                 
-    ## 16 start_prec        2                                                          
-    ## 17 start_date2       1978-04-27                                                 
-    ## 18 start_prec2       1                                                          
-    ## 19 ep_end            0                                                          
-    ## 20 ep_end_date       <NA>                                                       
-    ## 21 ep_end_prec       <NA>                                                       
-    ## 22 gwno_a            700                                                        
-    ## 23 gwno_a_2nd        365                                                        
-    ## 24 gwno_b            <NA>                                                       
-    ## 25 gwno_b_2nd        <NA>                                                       
-    ## 26 gwno_loc          700                                                        
-    ## 27 region            3                                                          
-    ## 28 version           20.1
+    ## # A tibble: 28 × 2
+    ##    name                 value                                                               
+    ##    <chr>                <chr>                                                               
+    ##  1 conflict_id          333                                                                 
+    ##  2 location             Afghanistan                                                         
+    ##  3 side_a               Government of Afghanistan                                           
+    ##  4 side_a_id            130                                                                 
+    ##  5 side_a_2nd           Government of Russia (Soviet Union)                                 
+    ##  6 side_b               Harakat-i Inqilab-i Islami-yi Afghanistan , Hizb-i Islami-yi Afghan…
+    ##  7 side_b_id            293, 299, 294, 297, 295, 292, 296                                   
+    ##  8 side_b_2nd           <NA>                                                                
+    ##  9 incompatibility      2                                                                   
+    ## 10 territory_name       <NA>                                                                
+    ## 11 year                 1987                                                                
+    ## 12 intensity_level      2                                                                   
+    ## 13 cumulative_intensity 1                                                                   
+    ## 14 type_of_conflict     4                                                                   
+    ## 15 start_date           1975-07-02                                                          
+    ## 16 start_prec           2                                                                   
+    ## 17 start_date2          1978-04-27                                                          
+    ## 18 start_prec2          1                                                                   
+    ## 19 ep_end               0                                                                   
+    ## 20 ep_end_date          <NA>                                                                
+    ## 21 ep_end_prec          <NA>                                                                
+    ## 22 gwno_a               700                                                                 
+    ## 23 gwno_a_2nd           365                                                                 
+    ## 24 gwno_b               <NA>                                                                
+    ## 25 gwno_b_2nd           <NA>                                                                
+    ## 26 gwno_loc             700                                                                 
+    ## 27 region               3                                                                   
+    ## 28 version              21.1
 
 ``` r
 # Here we can see a participant that doesn't have a GW id. ACD does have actor
@@ -112,11 +113,12 @@ acd <- raw %>%
 nrow(acd)
 ```
 
-    ## [1] 2448
+    ## [1] 2506
 
 ``` r
 # v19.1: 2384
 # v20.1: 2448
+# v21.1: 2506
 
 acd <- acd %>%
   separate_rows(gwno_a, sep = "[, ]+") %>%
@@ -128,11 +130,12 @@ acd <- acd %>%
 nrow(acd)
 ```
 
-    ## [1] 4546
+    ## [1] 4803
 
 ``` r
 # v19.1: 4341
 # v20.1: 4546
+# v21.1: 4803
 
 # This should not give any warnings about inducing NA's
 acd$gwno_a <- as.integer(acd$gwno_a)
@@ -158,11 +161,12 @@ acd <-acd %>%
 nrow(acd)
 ```
 
-    ## [1] 7271
+    ## [1] 7635
 
 ``` r
 # v19.1: 6,977
 # v20.1: 7,271
+# v21.1: 7,635
 # acd is now by participant-conflict-role-year
 
 # Create a template statelist
@@ -281,24 +285,8 @@ any_conflict <- any_conflict %>%
                 any_conflict_minor = as.integer(intensity_level==1)) %>%
   dplyr::select(-intensity_level) %>%
   dplyr::group_by(gwcode, year) %>%
-  dplyr::summarize_all(funs(max))
-```
+  dplyr::summarize_all(list(~max(.)))
 
-    ## Warning: `funs()` is deprecated as of dplyr 0.8.0.
-    ## Please use a list of either functions or lambdas: 
-    ## 
-    ##   # Simple named list: 
-    ##   list(mean = mean, median = median)
-    ## 
-    ##   # Auto named with `tibble::lst()`: 
-    ##   tibble::lst(mean, median)
-    ## 
-    ##   # Using lambdas
-    ##   list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
-    ## This warning is displayed once every 8 hours.
-    ## Call `lifecycle::last_warnings()` to see where this warning was generated.
-
-``` r
 gw <- dplyr::left_join(gw, any_conflict, by = c("gwcode", "year")) %>%
   tidyr::replace_na(list(any_conflict = 0, any_conflict_major = 0,
                          any_conflict_minor = 0))
@@ -332,7 +320,7 @@ ext_conf <- ext_conf %>%
                 ext_conf_minor = as.integer(intensity_level==1)) %>%
   dplyr::select(-intensity_level) %>%
   dplyr::group_by(gwcode, year) %>%
-  dplyr::summarize_all(funs(max))
+  dplyr::summarize_all(list(~max(.)))
 
 gw <- dplyr::left_join(gw, ext_conf, by = c("gwcode", "year")) %>%
   tidyr::replace_na(list(ext_conf = 0, ext_conf_major = 0,
@@ -376,7 +364,7 @@ acd <- gw
 dim(acd)
 ```
 
-    ## [1] 11522    17
+    ## [1] 11719    17
 
 ``` r
 table(complete.cases(acd))
@@ -384,37 +372,37 @@ table(complete.cases(acd))
 
     ## 
     ##  TRUE 
-    ## 11522
+    ## 11719
 
 ``` r
 range(acd$year)
 ```
 
-    ## [1] 1946 2019
+    ## [1] 1946 2020
 
 ``` r
-readr::write_rds(acd, "acd.rds")
-readr::write_csv(acd, "acd.csv")
+readr::write_rds(acd, "output/acd.rds")
+readr::write_csv(acd, "output/acd.csv")
 
 knitr::kable(codebook)
 ```
 
-| name                         | description                                                                                                                    |
-| :--------------------------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| gwcode                       | Gleditsch & Ward country code                                                                                                  |
-| year                         | Year                                                                                                                           |
-| internal\_confl              | Internal conflict (colonial, civil war) on own territory (any level, \>1000 deaths, 25-1,000 deaths)                           |
-| internal\_confl\_major       | Internal conflict (colonial, civil war) on own territory (any level, \>1000 deaths, 25-1,000 deaths)                           |
-| internal\_confl\_minor       | Internal conflict (colonial, civil war) on own territory (any level, \>1000 deaths, 25-1,000 deaths)                           |
-| internal\_confl\_part        | Participant in an internal conflict (colonial, civil war), including own territory (any level, \>1000 deaths, 25-1,000 deaths) |
-| internal\_confl\_part\_major | Participant in an internal conflict (colonial, civil war), including own territory (any level, \>1000 deaths, 25-1,000 deaths) |
-| internal\_confl\_part\_minor | Participant in an internal conflict (colonial, civil war), including own territory (any level, \>1000 deaths, 25-1,000 deaths) |
-| war                          | Interstate war (any level, \>1000 deaths, 25-1,000 deaths)                                                                     |
-| war\_major                   | Interstate war (any level, \>1000 deaths, 25-1,000 deaths)                                                                     |
-| war\_minor                   | Interstate war (any level, \>1000 deaths, 25-1,000 deaths)                                                                     |
-| any\_conflict                | Participant in any type of conflict (any level, \>1000 deaths, 25-1,000 deaths)                                                |
-| any\_conflict\_major         | Participant in any type of conflict (any level, \>1000 deaths, 25-1,000 deaths)                                                |
-| any\_conflict\_minor         | Participant in any type of conflict (any level, \>1000 deaths, 25-1,000 deaths)                                                |
-| ext\_conf                    | Participant in any type of conflict, not in own territory (any level, \>1000 deaths, 25-1,000 deaths)                          |
-| ext\_conf\_major             | Participant in any type of conflict, not in own territory (any level, \>1000 deaths, 25-1,000 deaths)                          |
-| ext\_conf\_minor             | Participant in any type of conflict, not in own territory (any level, \>1000 deaths, 25-1,000 deaths)                          |
+| name                      | description                                                                                                                    |
+|:--------------------------|:-------------------------------------------------------------------------------------------------------------------------------|
+| gwcode                    | Gleditsch & Ward country code                                                                                                  |
+| year                      | Year                                                                                                                           |
+| internal_confl            | Internal conflict (colonial, civil war) on own territory (any level, \>1000 deaths, 25-1,000 deaths)                           |
+| internal_confl_major      | Internal conflict (colonial, civil war) on own territory (any level, \>1000 deaths, 25-1,000 deaths)                           |
+| internal_confl_minor      | Internal conflict (colonial, civil war) on own territory (any level, \>1000 deaths, 25-1,000 deaths)                           |
+| internal_confl_part       | Participant in an internal conflict (colonial, civil war), including own territory (any level, \>1000 deaths, 25-1,000 deaths) |
+| internal_confl_part_major | Participant in an internal conflict (colonial, civil war), including own territory (any level, \>1000 deaths, 25-1,000 deaths) |
+| internal_confl_part_minor | Participant in an internal conflict (colonial, civil war), including own territory (any level, \>1000 deaths, 25-1,000 deaths) |
+| war                       | Interstate war (any level, \>1000 deaths, 25-1,000 deaths)                                                                     |
+| war_major                 | Interstate war (any level, \>1000 deaths, 25-1,000 deaths)                                                                     |
+| war_minor                 | Interstate war (any level, \>1000 deaths, 25-1,000 deaths)                                                                     |
+| any_conflict              | Participant in any type of conflict (any level, \>1000 deaths, 25-1,000 deaths)                                                |
+| any_conflict_major        | Participant in any type of conflict (any level, \>1000 deaths, 25-1,000 deaths)                                                |
+| any_conflict_minor        | Participant in any type of conflict (any level, \>1000 deaths, 25-1,000 deaths)                                                |
+| ext_conf                  | Participant in any type of conflict, not in own territory (any level, \>1000 deaths, 25-1,000 deaths)                          |
+| ext_conf_major            | Participant in any type of conflict, not in own territory (any level, \>1000 deaths, 25-1,000 deaths)                          |
+| ext_conf_minor            | Participant in any type of conflict, not in own territory (any level, \>1000 deaths, 25-1,000 deaths)                          |
