@@ -1,0 +1,35 @@
+---
+title: "WDI: ICT"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+*Last updated on: `r as.character(format(Sys.Date(), "%d %B %Y"))`*
+
+Cell phone and internet broadband usage rates.
+
+```{r}
+library(ggplot2)
+
+df <- read.csv("output/wdi-ict.csv")
+dplyr::glimpse(df)
+
+stats <- yaml::read_yaml("output/wdi-ict-signature.yml")
+stats
+
+ggplot(df[df$year > 1988, ], aes(x = year, y = IT.NET.USER.ZS, group = gwcode)) +
+  geom_line(alpha = 0.5) +
+  theme_light()
+
+# Scaled version that is adjusted for annual mean and sd
+ggplot(df[df$year > 1988, ], aes(x = year, y = IT.CEL.SETS.P2, group = gwcode)) +
+  geom_line(alpha = 0.5) +
+  theme_light()
+```
+
+## Data cleaning
+
+See [clean-data.md](clean-data.md) for results of the data cleaning script. 

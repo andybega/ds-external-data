@@ -1,0 +1,9 @@
+Class: tbl_df, tbl, data.frame
+Size_in_mem: 0.5 Mb
+N_countries: 175
+Years: 1960 - 2020
+N_columns: 7
+Columns: gwcode, year, country, IT.NET.USER.ZS, IT.NET.USER.ZS_imputed, IT.CEL.SETS.P2,
+  IT.CEL.SETS.P2_imputed
+N_rows: 10615
+N_complete_rows: 10615
