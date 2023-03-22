@@ -6,7 +6,11 @@
 #'   github_document
 #' ---
 
+# This file is generated from README.R.
+# To spint/knit/compile the .md file, run:
+# setwd("acd"); rmarkdown::render("README.R")
 
+file_acd <- "input/v22.1/ucdp-prio-acd-221.csv"
 
 #
 #   Clean for format the ACD country-year data
@@ -15,7 +19,6 @@
 suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
-  library(readxl)
   library(here)
   library(states)
   library(ggplot2)
@@ -24,7 +27,7 @@ suppressPackageStartupMessages({
 
 setwd(here("acd"))
 
-raw <- read_csv("input/v21.1/ucdp-prio-acd-211.csv", col_types = cols())
+raw <- read_csv(file_acd, col_types = cols())
 
 raw <- raw %>%
   dplyr::mutate_at(vars(dplyr::contains("date")), as.Date)
@@ -41,7 +44,7 @@ range(raw$year)
 raw %>%
   filter(conflict_id==333, year==1987) %>%
   mutate_all(as.character) %>%
-  pivot_longer(everything(), values_ptypes = list(character())) %>%
+  pivot_longer(everything(), values_ptypes = character()) %>%
   print(n = 100)
 
 # Here we can see a participant that doesn't have a GW id. ACD does have actor
@@ -79,6 +82,7 @@ nrow(acd)
 # v19.1: 2384
 # v20.1: 2448
 # v21.1: 2506
+# v22.2: 2568
 
 acd <- acd %>%
   separate_rows(gwno_a, sep = "[, ]+") %>%
@@ -91,16 +95,22 @@ nrow(acd)
 # v19.1: 4341
 # v20.1: 4546
 # v21.1: 4803
+# v22.2: 5311
 
 # This should not give any warnings about inducing NA's
-acd$gwno_a <- as.integer(acd$gwno_a)
-acd$gwno_a_2nd <- as.integer(acd$gwno_a_2nd)
-acd$gwno_b <- as.integer(acd$gwno_b)
-acd$gwno_b_2nd <- as.integer(acd$gwno_b_2nd)
-acd$gwno_loc <- as.integer(acd$gwno_loc)
-# Throw an error in case of warnigns (which could be from something else too
-# though)
-if (length(warnings()) > 0) stop("Conversion to integer should not cause NAs")
+out <- tryCatch({
+  acd$gwno_a <- as.integer(acd$gwno_a)
+  acd$gwno_a_2nd <- as.integer(acd$gwno_a_2nd)
+  acd$gwno_b <- as.integer(acd$gwno_b)
+  acd$gwno_b_2nd <- as.integer(acd$gwno_b_2nd)
+  acd$gwno_loc <- as.integer(acd$gwno_loc)
+}, 
+warning = function(w) {
+  if (names(w)=="NAs introduced by coercion") {
+    stop("Conversion to integer should not cause NAs")
+  }
+})
+
 
 # Now make this longer, we will have to do this below anyways
 acd <-acd %>%
@@ -114,10 +124,12 @@ acd <-acd %>%
            gwcode) %>%
   summarize(.groups = "drop")
 nrow(acd)
+# acd is now by participant-conflict-role-year
 # v19.1: 6,977
 # v20.1: 7,271
 # v21.1: 7,635
-# acd is now by participant-conflict-role-year
+# v22.2: 8,240
+
 
 # Create a template statelist
 gw <- state_panel(min(acd$year), max(acd$year), partial = "any", useGW = TRUE)

@@ -2,9 +2,15 @@ Armed Conflict Dataset (ACD)
 ================
 Author: Andreas Beger
 
-Last updated on: 21 February 2022
+Last updated on: 22 March 2023
 
 ``` r
+# This file is generated from README.R.
+# To spint/knit/compile the .md file, run:
+# setwd("acd"); rmarkdown::render("README.R")
+
+file_acd <- "input/v22.1/ucdp-prio-acd-221.csv"
+
 #
 #   Clean for format the ACD country-year data
 #
@@ -12,7 +18,6 @@ Last updated on: 21 February 2022
 suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
-  library(readxl)
   library(here)
   library(states)
   library(ggplot2)
@@ -21,7 +26,7 @@ suppressPackageStartupMessages({
 
 setwd(here("acd"))
 
-raw <- read_csv("input/v21.1/ucdp-prio-acd-211.csv", col_types = cols())
+raw <- read_csv(file_acd, col_types = cols())
 
 raw <- raw %>%
   dplyr::mutate_at(vars(dplyr::contains("date")), as.Date)
@@ -30,7 +35,7 @@ raw <- raw %>%
 range(raw$year)
 ```
 
-    ## [1] 1946 2020
+    ## [1] 1946 2021
 
 ``` r
 # The raw data are organized by conflict-year, and lists for each year the
@@ -42,41 +47,41 @@ range(raw$year)
 raw %>%
   filter(conflict_id==333, year==1987) %>%
   mutate_all(as.character) %>%
-  pivot_longer(everything(), values_ptypes = list(character())) %>%
+  pivot_longer(everything(), values_ptypes = character()) %>%
   print(n = 100)
 ```
 
     ## # A tibble: 28 × 2
-    ##    name                 value                                                               
-    ##    <chr>                <chr>                                                               
-    ##  1 conflict_id          333                                                                 
-    ##  2 location             Afghanistan                                                         
-    ##  3 side_a               Government of Afghanistan                                           
-    ##  4 side_a_id            130                                                                 
-    ##  5 side_a_2nd           Government of Russia (Soviet Union)                                 
-    ##  6 side_b               Harakat-i Inqilab-i Islami-yi Afghanistan , Hizb-i Islami-yi Afghan…
-    ##  7 side_b_id            293, 299, 294, 297, 295, 292, 296                                   
-    ##  8 side_b_2nd           <NA>                                                                
-    ##  9 incompatibility      2                                                                   
-    ## 10 territory_name       <NA>                                                                
-    ## 11 year                 1987                                                                
-    ## 12 intensity_level      2                                                                   
-    ## 13 cumulative_intensity 1                                                                   
-    ## 14 type_of_conflict     4                                                                   
-    ## 15 start_date           1975-07-02                                                          
-    ## 16 start_prec           2                                                                   
-    ## 17 start_date2          1978-04-27                                                          
-    ## 18 start_prec2          1                                                                   
-    ## 19 ep_end               0                                                                   
-    ## 20 ep_end_date          <NA>                                                                
-    ## 21 ep_end_prec          <NA>                                                                
-    ## 22 gwno_a               700                                                                 
-    ## 23 gwno_a_2nd           365                                                                 
-    ## 24 gwno_b               <NA>                                                                
-    ## 25 gwno_b_2nd           <NA>                                                                
-    ## 26 gwno_loc             700                                                                 
-    ## 27 region               3                                                                   
-    ## 28 version              21.1
+    ##    name                 value                                                           
+    ##    <chr>                <chr>                                                           
+    ##  1 conflict_id          333                                                             
+    ##  2 location             Afghanistan                                                     
+    ##  3 side_a               Government of Afghanistan                                       
+    ##  4 side_a_id            130                                                             
+    ##  5 side_a_2nd           Government of Russia (Soviet Union)                             
+    ##  6 side_b               Harakat-i Inqilab-i Islami-yi Afghanistan , Hizb-i Islami-yi Af…
+    ##  7 side_b_id            292, 293, 294, 295, 296, 297, 299                               
+    ##  8 side_b_2nd           <NA>                                                            
+    ##  9 incompatibility      2                                                               
+    ## 10 territory_name       <NA>                                                            
+    ## 11 year                 1987                                                            
+    ## 12 intensity_level      2                                                               
+    ## 13 cumulative_intensity 1                                                               
+    ## 14 type_of_conflict     4                                                               
+    ## 15 start_date           1975-07-02                                                      
+    ## 16 start_prec           6                                                               
+    ## 17 start_date2          1978-04-27                                                      
+    ## 18 start_prec2          1                                                               
+    ## 19 ep_end               0                                                               
+    ## 20 ep_end_date          <NA>                                                            
+    ## 21 ep_end_prec          <NA>                                                            
+    ## 22 gwno_a               700                                                             
+    ## 23 gwno_a_2nd           365                                                             
+    ## 24 gwno_b               <NA>                                                            
+    ## 25 gwno_b_2nd           <NA>                                                            
+    ## 26 gwno_loc             700                                                             
+    ## 27 region               3                                                               
+    ## 28 version              22.1
 
 ``` r
 # Here we can see a participant that doesn't have a GW id. ACD does have actor
@@ -113,12 +118,13 @@ acd <- raw %>%
 nrow(acd)
 ```
 
-    ## [1] 2506
+    ## [1] 2568
 
 ``` r
 # v19.1: 2384
 # v20.1: 2448
 # v21.1: 2506
+# v22.2: 2568
 
 acd <- acd %>%
   separate_rows(gwno_a, sep = "[, ]+") %>%
@@ -130,22 +136,28 @@ acd <- acd %>%
 nrow(acd)
 ```
 
-    ## [1] 4803
+    ## [1] 5311
 
 ``` r
 # v19.1: 4341
 # v20.1: 4546
 # v21.1: 4803
+# v22.2: 5311
 
 # This should not give any warnings about inducing NA's
-acd$gwno_a <- as.integer(acd$gwno_a)
-acd$gwno_a_2nd <- as.integer(acd$gwno_a_2nd)
-acd$gwno_b <- as.integer(acd$gwno_b)
-acd$gwno_b_2nd <- as.integer(acd$gwno_b_2nd)
-acd$gwno_loc <- as.integer(acd$gwno_loc)
-# Throw an error in case of warnigns (which could be from something else too
-# though)
-if (length(warnings()) > 0) stop("Conversion to integer should not cause NAs")
+out <- tryCatch({
+  acd$gwno_a <- as.integer(acd$gwno_a)
+  acd$gwno_a_2nd <- as.integer(acd$gwno_a_2nd)
+  acd$gwno_b <- as.integer(acd$gwno_b)
+  acd$gwno_b_2nd <- as.integer(acd$gwno_b_2nd)
+  acd$gwno_loc <- as.integer(acd$gwno_loc)
+}, 
+warning = function(w) {
+  if (names(w)=="NAs introduced by coercion") {
+    stop("Conversion to integer should not cause NAs")
+  }
+})
+
 
 # Now make this longer, we will have to do this below anyways
 acd <-acd %>%
@@ -161,13 +173,15 @@ acd <-acd %>%
 nrow(acd)
 ```
 
-    ## [1] 7635
+    ## [1] 8240
 
 ``` r
+# acd is now by participant-conflict-role-year
 # v19.1: 6,977
 # v20.1: 7,271
 # v21.1: 7,635
-# acd is now by participant-conflict-role-year
+# v22.2: 8,240
+
 
 # Create a template statelist
 gw <- state_panel(min(acd$year), max(acd$year), partial = "any", useGW = TRUE)
@@ -364,7 +378,7 @@ acd <- gw
 dim(acd)
 ```
 
-    ## [1] 11719    17
+    ## [1] 11916    17
 
 ``` r
 table(complete.cases(acd))
@@ -372,13 +386,13 @@ table(complete.cases(acd))
 
     ## 
     ##  TRUE 
-    ## 11719
+    ## 11916
 
 ``` r
 range(acd$year)
 ```
 
-    ## [1] 1946 2020
+    ## [1] 1946 2021
 
 ``` r
 readr::write_rds(acd, "output/acd.rds")
