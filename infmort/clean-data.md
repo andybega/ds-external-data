@@ -4,7 +4,6 @@ WDI Infant mortality
 -   [Functions / packages](#functions--packages)
 -   [Get raw data](#get-raw-data)
 -   [Clean raw data](#clean-raw-data)
-    -   [Lag data](#lag-data)
     -   [Normalize to G&W statelist](#normalize-to-gw-statelist)
 -   [Handle missing values](#handle-missing-values)
     -   [Add custom series for several historical entities like
@@ -13,15 +12,13 @@ WDI Infant mortality
         missing](#drop-countries-completely-missing)
     -   [Carry-back impute lag-induced missing
         data](#carry-back-impute-lag-induced-missing-data)
-    -   [Carry-forward for missing last
-        year](#carry-forward-for-missing-last-year)
     -   [Check remaining missing
         values](#check-remaining-missing-values)
     -   [Find imputation model](#find-imputation-model)
 -   [Add year-normalized version](#add-year-normalized-version)
 -   [Done, save](#done-save)
 
-*Last compiled on: 19 February 2022*
+*Last updated on 07 March 2022*
 
 Note that places that require attention during data updates are marked
 with *UPDATE:*
@@ -32,13 +29,6 @@ pretty aggressive imputations for countries that are missing early parts
 of a series. The goal is to impute defensively, i.e. if someone looks at
 a series with imputed values, they look reasonable. The goal is *not* to
 capture in some way imputation variance/uncertainty.
-
-There is a pretty cool website at <https://childmortality.org/data> that
-has the original survey data and model-based estimates. Writing in
-February 2022, while WDI is still missing values for 2020, that page
-does have model-based estimates for 2020. But I think the log-linear
-imputation still works sufficiently well to not depart from the WDI
-data, wich is easier to update.
 
 ## Functions / packages
 
@@ -203,25 +193,6 @@ lines(impute_ts_loglinear(x)[1:16], col = "red")
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
 
-``` r
-# If the first value in a series is missing and the second is not, carry back
-# the second value to impute the first NA
-carry_back_first_missing <- function(x, date) {
-  stopifnot(
-    # make sure there are no duplicate dates
-    length(unique(date))==length(date),
-    # make sure the dates are ordered regularly
-    all(date==date[order(date)])
-  )
-  if (length(x) > 1) {
-    if (is.na(x[1]) & !is.na(x[2])) {
-      x[1] <- x[2]
-    }
-  }
-  x
-}
-```
-
 ## Get raw data
 
 Download the raw source data. Since this takes a while, this will only
@@ -232,7 +203,8 @@ manually run this chunk.*
 
 ``` r
 if (!file.exists("input/infmort.csv")) {
-  raw <- WDI(indicator = "SP.DYN.IMRT.IN", country = "all", start = 1960, 
+  raw <- WDI(indicator = c("SP.DYN.IMRT.IN"), 
+             country = "all", start = 1960, 
            end = year(today()), extra = FALSE)
   write_csv(raw, "input/infmort.csv")
 }
@@ -244,22 +216,23 @@ if (!file.exists("input/infmort.csv")) {
 raw <- read_csv("input/infmort.csv")
 ```
 
-    ## Rows: 16226 Columns: 4
+    ## Rows: 16226 Columns: 5
 
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (2): iso2c, country
-    ## dbl (2): SP.DYN.IMRT.IN, year
+    ## dbl (3): year, SP.DYN.IMRT.IN, SH.DYN.MORT
 
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
-# UPDATE: manually check to make sure that data for the last year are not all
-# missing. 
+# UPDATE: check this is still the case
+# In the raw data all values for 2020 are missing; drop that year from the data
+# 2022-03-07: got it now
 last_year <- filter(raw, year==max(year))
-stopifnot(!all(is.na(last_year[["SP.DYN.IMRT.IN"]])))
+#stopifnot(all(is.na(last_year[["SP.DYN.IMRT.IN"]])))
 #raw <- filter(raw, year!=max(year))
 
 # convert to G&W system
@@ -332,28 +305,13 @@ wdi <- wdi %>%
 wdi$iso2c <- NULL
 ```
 
-### Lag data
-
-*UPDATE: make sure the lagging is still correct*
-
-Lag the data before we check for and if possible impute missing values
-because the lagging will introduce missingness as well.
-
-``` r
-wdi$year <- wdi$year + 1
-range(wdi$year)
-```
-
-    ## [1] 1961 2021
-
 ### Normalize to G&W statelist
 
 ``` r
 # Add in missing cases from G&W state list and drop excess country-years not 
 # in G&W list (left join)
 statelist <- state_panel(1960,  # this cannot be min(year) because we lagged above
-                         year(today())-1, # UPDATE: check this is the end year I want to have
-                         partial = "any")
+                         max(wdi$year), partial = "any")
 wdi <- left_join(statelist, wdi, by = c("gwcode", "year")) %>%
   arrange(gwcode, year)
 ```
@@ -419,10 +377,6 @@ gdr <- gdr %>%
   filter(!duplicated(year)) %>%
   mutate(gwcode = 265) %>%
   rename(infmort_new = morinfr_tot)
-
-# Need to lag this before joining
-gdr$year <- gdr$year + 1
-
 # drop in values
 wdi <- left_join(wdi, gdr, by = c("gwcode", "year")) %>%
   mutate(infmort = ifelse(is.na(infmort), infmort_new, infmort)) %>%
@@ -432,17 +386,9 @@ wdi <- left_join(wdi, gdr, by = c("gwcode", "year")) %>%
 #### Taiwan
 
 Data from the Ministry of Health and Welfare at
-<https://www.mohw.gov.tw/>. Specifically, looking for “Cause of Death”
-statistics, which should get to a page with years as options:
-
--   <https://www.mohw.gov.tw/np-128-2.html>
-
-This one goes to the 2017 page:
-
--   <https://www.mohw.gov.tw/cp-3961-42866-2.html>
-
-Anyways, this should eventually lead to a spreadsheet download for that
-year.
+<https://www.mohw.gov.tw/>. Specifically downloaded from
+<https://www.mohw.gov.tw/cp-3961-42866-2.html> and
+<https://www.mohw.gov.tw/dl-36335-c57437dc-058a-44cc-b6aa-16c3af6bb18d.html>.
 
 ``` r
 # library(readxl)
@@ -472,10 +418,8 @@ taiwan <- read_csv("input/Taiwan_infmort.csv",
 taiwan <- taiwan %>%
   add_row(gwcode = 713, year = 2018, infmort_new = 4.16) %>%
   add_row(gwcode = 713, year = 2019, infmort_new = 3.83) %>%
-  add_row(gwcode = 713, year = 2020, infmort_new = 3.63)
-
-# need to lag this before joining
-taiwan$year <- taiwan$year + 1
+  # Don't have 2020 values yet, but let's just say it's same as 2019
+  add_row(gwcode = 713, year = 2020, infmort_new = 3.83)
 
 # drop in values
 wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
@@ -483,60 +427,24 @@ wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
   select(-infmort_new)
 ```
 
-#### Kosovo 2008 onwards
+#### Kosovo 2008-2017
 
 <https://ec.europa.eu/eurostat/databrowser/view/tps00027/default/table?lang=en>
 
 ``` r
-raw <- read_tsv("input/tps00027_page_tabular.tsv")
-```
-
-    ## Rows: 1 Columns: 13
-
-    ## ── Column specification ────────────────────────────────────────────────────────
-    ## Delimiter: "\t"
-    ## chr  (3): freq,unit,indic_de,geo\TIME_PERIOD, 2013, 2014
-    ## dbl (10): 2008, 2009, 2010, 2011, 2012, 2015, 2016, 2017, 2018, 2019
-
-    ## 
-    ## ℹ Use `spec()` to retrieve the full column specification for this data.
-    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
-
-``` r
-raw <- raw %>% 
-  # 2013 and 2014 are missing values but marked with character
-  mutate(`2013` = NA_real_, `2014` = NA_real_) %>%
-  pivot_longer(-1) 
-colnames(raw) <- c("drop", "year", "infmort_new")
-raw$drop <- NULL
-raw <- raw[, c("year", "infmort_new")]
-
-# The original data Rick Morgan found also had values for 2006 and 2007, add 
-# those back in
-raw <- rbind(
-  data.frame(year = c(2006, 2007), infmort_new = c(12, 11.1)),
-  raw
-)
-
-# UPDATE: 2013 and 2014 have been missing; linear interpolate
-if (!all(is.na(raw$infmort_new[raw$year %in% c(2013, 2014)]))) {
-  stop("Something has changed with Kosovo data")
-}
-delta <- raw$infmort_new[raw$year==2015] - raw$infmort_new[raw$year==2012]
-raw$infmort_new[raw$year %in% c(2013, 2014)] <- raw$infmort_new[raw$year==2012] + (c(1, 2)*delta/3)
-
-# UPDATE: Feb. 2022: Kosovo is missing 2020 and 2021, and the series is funky.
-# Use the average for 2016-2019 for 2020-2021
-raw <- rbind(
-  raw,
-  data.frame(
-    year = c(2020, 2021),
-    infmort_new = mean(raw$infmort_new[raw$year %in% c(2016:2019)])
-  ))
-
-raw$country_name <- "Kosovo"
-raw$gwcode <- 347
-write_csv(raw, "input/kosovo_infmort.csv")
+# kosovo <- read_xlsx("Kosovo_infmort_data_EC.xlsx", sheet = 3, skip = 8) %>% 
+#   filter(TIME == "Kosovo (under United Nations Security Council Resolution 1244/99)") %>% 
+#   select(-contains("...")) %>% 
+#   rename(year = "TIME") %>%
+#   mutate(`2013` = as.numeric(NA), 
+#          `2014` = as.numeric(NA)) %>% 
+#   gather(key = "year", value = "infmort_new") %>% 
+#   mutate(country_name = "Kosovo", 
+#          gwcode = 347, 
+#          infmort_new = as.numeric(infmort_new)) %>% 
+#   mutate(infmort_new = case_when(year == 2013 ~ 10.83333, TRUE ~ infmort_new), # There are 2 NAs -- 2013, 2014. I'm going to spread the difference between 2012 and 2015 ((9.7 - 11.4) / 3) + 11.4
+#           infmort_new = case_when(year == 2014 ~ 10.26666, TRUE ~ infmort_new)) ## ((9.7 - 11.4) / 3) + 10.83333 
+# write_csv(kosovo, "C:/Users/rickm/Dropbox/Closing Space/Data/infmort/kosovo_infmort.csv")
 
 kosovo <- read_csv("input/kosovo_infmort.csv",
                    col_types = cols(
@@ -545,10 +453,6 @@ kosovo <- read_csv("input/kosovo_infmort.csv",
   country_name = col_character(),
   gwcode = col_double()
 ))
-
-# need to lag this before joining
-kosovo$year <- kosovo$year + 1
-
 # drop in values
 wdi <- left_join(wdi, kosovo, by = c("gwcode", "year")) %>%
   mutate(infmort = ifelse(is.na(infmort), infmort_new, infmort)) %>%
@@ -573,32 +477,32 @@ missing_country %>%
 
 | gwcode | country               |   n |
 |-------:|:----------------------|----:|
-|     54 | Dominica              |  44 |
-|     55 | Grenada               |  48 |
-|     56 | Saint Lucia           |  43 |
-|     57 | Saint Vincent         |  43 |
-|     58 | Antigua & Barbuda     |  41 |
-|     60 | Saint Kitts and Nevis |  39 |
-|    221 | Monaco                |  62 |
-|    223 | Liechtenstein         |  62 |
+|     54 | Dominica              |  43 |
+|     55 | Grenada               |  47 |
+|     56 | Saint Lucia           |  42 |
+|     57 | Saint Vincent         |  42 |
+|     58 | Antigua & Barbuda     |  40 |
+|     60 | Saint Kitts and Nevis |  38 |
+|    221 | Monaco                |  61 |
+|    223 | Liechtenstein         |  61 |
 |    315 | Czechoslovakia        |  33 |
-|    331 | San Marino            |  62 |
-|    396 | Abkhazia              |  14 |
-|    397 | South Ossetia         |  14 |
-|    403 | Sao Tome and Principe |  47 |
+|    331 | San Marino            |  61 |
+|    396 | Abkhazia              |  13 |
+|    397 | South Ossetia         |  13 |
+|    403 | Sao Tome and Principe |  46 |
 |    511 | Zanzibar              |   2 |
-|    591 | Seychelles            |  46 |
+|    591 | Seychelles            |  45 |
 |    680 | South Yemen           |  24 |
 |    817 | South Vietnam         |  16 |
-|    935 | Vanuatu               |  42 |
-|    970 | Kiribati              |  43 |
-|    971 | Nauru                 |  54 |
-|    972 | Tonga                 |  52 |
-|    973 | Tuvalu                |  44 |
-|    983 | Marshall Islands      |  36 |
-|    986 | Palau                 |  28 |
-|    987 | Micronesia            |  36 |
-|    990 | Samoa/Western Samoa   |  60 |
+|    935 | Vanuatu               |  41 |
+|    970 | Kiribati              |  42 |
+|    971 | Nauru                 |  53 |
+|    972 | Tonga                 |  51 |
+|    973 | Tuvalu                |  43 |
+|    983 | Marshall Islands      |  35 |
+|    986 | Palau                 |  27 |
+|    987 | Micronesia            |  35 |
+|    990 | Samoa/Western Samoa   |  59 |
 
 ``` r
 # Take out countries missing all values
@@ -614,7 +518,7 @@ or independence year value to impute, i.e. carry back impute those
 cases.
 
 ``` r
-# Add indy syear, this is needed somewhere downstream, not in this chunk
+# Countries that gained indy in 1960 or later
 data(gwstates)
 indy <- gwstates %>% 
   # some states are present more than 1 time if they had interrupted indy; only
@@ -627,53 +531,28 @@ indy <- gwstates %>%
 stopifnot(nrow(indy)==length(unique(indy$gwcode)))
 
 wdi <- wdi %>%
-  left_join(indy, by = "gwcode")
-
-wdi <- wdi %>%
+  left_join(indy, by = "gwcode") %>%
   group_by(gwcode) %>%
   arrange(gwcode, year) %>%
-  mutate(infmort2 = carry_back_first_missing(infmort, year))
+  mutate(infmort2 = case_when(
+    (is.na(infmort) & year>=syear) ~ lead(infmort, n = 1)[1],
+    TRUE ~ infmort
+  ))
 
 # I add the imputed values as second column to allow comparison, if one wants
 # to do that at this point. 
 sum(is.na(wdi$infmort))
 ```
 
-    ## [1] 518
+    ## [1] 405
 
 ``` r
 sum(is.na(wdi$infmort2))
 ```
 
-    ## [1] 441
+    ## [1] 400
 
 ``` r
-wdi <- wdi %>%
-  mutate(infmort = infmort2, infmort2 = NULL)
-```
-
-### Carry-forward for missing last year
-
-*UPDATE: for the 2022 update, countries were still missing 2020 and
-2021; rather than trying to extrapolate those, just use the last
-observed values from 2019 (aka 2020 when considering the 1-year lag.*
-
-``` r
-carry_forward_last_missing <- function(x) {
-  lx <- length(x)
-  xt <- tail(x, 2)
-  if (is.na(xt[2] & !is.na(xt[1]))) x[lx] <- xt[1]
-  x
-}
-
-wdi <- wdi %>%
-  group_by(gwcode) %>%
-  arrange(gwcode, year) %>%
-  mutate(infmort2 = carry_forward_last_missing(infmort)) %>%
-  ungroup()
-
-# change to compare for debug
-
 wdi <- wdi %>%
   mutate(infmort = infmort2, infmort2 = NULL)
 ```
@@ -710,45 +589,43 @@ missing %>%
 
 | gwcode |   N | N_miss | Frac_miss | years       |
 |-------:|----:|-------:|----------:|:------------|
-|    115 |  47 |      9 |      0.19 | 1975 - 1983 |
-|    160 |  62 |     10 |      0.16 | 1960 - 1969 |
-|    230 |  62 |     15 |      0.24 | 1960 - 1974 |
-|    232 |  62 |     26 |      0.42 | 1960 - 1985 |
-|    260 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    339 |  62 |     19 |      0.31 | 1960 - 1978 |
-|    345 |  47 |     25 |      0.53 | 1960 - 1984 |
-|    352 |  62 |     12 |      0.19 | 1960 - 1971 |
-|    365 |  62 |     11 |      0.18 | 1960 - 1970 |
-|    404 |  48 |     12 |      0.25 | 1974 - 1985 |
-|    411 |  54 |     15 |      0.28 | 1968 - 1982 |
-|    432 |  62 |      4 |      0.06 | 1960 - 1963 |
-|    436 |  62 |      8 |      0.13 | 1960 - 1967 |
-|    475 |  62 |      5 |      0.08 | 1960 - 1964 |
-|    481 |  62 |      8 |      0.13 | 1960 - 1967 |
-|    483 |  62 |     13 |      0.21 | 1960 - 1972 |
-|    490 |  62 |     10 |      0.16 | 1960 - 1969 |
-|    516 |  60 |      3 |      0.05 | 1962 - 1964 |
-|    520 |  62 |     25 |      0.40 | 1960 - 1984 |
-|    530 |  62 |      7 |      0.11 | 1960 - 1966 |
-|    540 |  47 |      6 |      0.13 | 1975 - 1980 |
-|    553 |  58 |      2 |      0.03 | 1964 - 1965 |
-|    560 |  62 |     15 |      0.24 | 1960 - 1974 |
-|    580 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    616 |  62 |      3 |      0.05 | 1960 - 1962 |
-|    630 |  62 |     12 |      0.19 | 1960 - 1971 |
-|    670 |  62 |     13 |      0.21 | 1960 - 1972 |
-|    678 |  62 |      4 |      0.06 | 1960 - 1963 |
-|    698 |  62 |      4 |      0.06 | 1960 - 1963 |
-|    700 |  62 |      2 |      0.03 | 1960 - 1961 |
-|    710 |  62 |     10 |      0.16 | 1960 - 1969 |
-|    712 |  62 |     19 |      0.31 | 1960 - 1978 |
-|    713 |  62 |     11 |      0.18 | 1960 - 1970 |
-|    731 |  62 |     26 |      0.42 | 1960 - 1985 |
-|    760 |  62 |     10 |      0.16 | 1960 - 1969 |
-|    775 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    811 |  62 |     16 |      0.26 | 1960 - 1975 |
-|    812 |  62 |     19 |      0.31 | 1960 - 1978 |
-|    816 |  62 |      5 |      0.08 | 1960 - 1964 |
+|    115 |  46 |      8 |      0.17 | 1975 - 1982 |
+|    160 |  61 |      9 |      0.15 | 1960 - 1968 |
+|    230 |  61 |     14 |      0.23 | 1960 - 1973 |
+|    232 |  61 |     25 |      0.41 | 1960 - 1984 |
+|    260 |  61 |      8 |      0.13 | 1960 - 1967 |
+|    339 |  61 |     18 |      0.30 | 1960 - 1977 |
+|    345 |  47 |     24 |      0.51 | 1960 - 1983 |
+|    352 |  61 |     11 |      0.18 | 1960 - 1970 |
+|    365 |  61 |     10 |      0.16 | 1960 - 1969 |
+|    404 |  47 |     11 |      0.23 | 1974 - 1984 |
+|    411 |  53 |     14 |      0.26 | 1968 - 1981 |
+|    432 |  61 |      3 |      0.05 | 1960 - 1962 |
+|    436 |  61 |      7 |      0.11 | 1960 - 1966 |
+|    475 |  61 |      4 |      0.07 | 1960 - 1963 |
+|    481 |  61 |      7 |      0.11 | 1960 - 1966 |
+|    483 |  61 |     12 |      0.20 | 1960 - 1971 |
+|    490 |  61 |      9 |      0.15 | 1960 - 1968 |
+|    516 |  59 |      2 |      0.03 | 1962 - 1963 |
+|    520 |  61 |     24 |      0.39 | 1960 - 1983 |
+|    530 |  61 |      6 |      0.10 | 1960 - 1965 |
+|    540 |  46 |      5 |      0.11 | 1975 - 1979 |
+|    560 |  61 |     14 |      0.23 | 1960 - 1973 |
+|    580 |  61 |      8 |      0.13 | 1960 - 1967 |
+|    616 |  61 |      2 |      0.03 | 1960 - 1961 |
+|    630 |  61 |     11 |      0.18 | 1960 - 1970 |
+|    670 |  61 |     12 |      0.20 | 1960 - 1971 |
+|    678 |  61 |      3 |      0.05 | 1960 - 1962 |
+|    698 |  61 |      3 |      0.05 | 1960 - 1962 |
+|    710 |  61 |      9 |      0.15 | 1960 - 1968 |
+|    712 |  61 |     18 |      0.30 | 1960 - 1977 |
+|    713 |  61 |     10 |      0.16 | 1960 - 1969 |
+|    731 |  61 |     25 |      0.41 | 1960 - 1984 |
+|    760 |  61 |      9 |      0.15 | 1960 - 1968 |
+|    775 |  61 |      8 |      0.13 | 1960 - 1967 |
+|    811 |  61 |     15 |      0.25 | 1960 - 1974 |
+|    812 |  61 |     18 |      0.30 | 1960 - 1977 |
+|    816 |  61 |      4 |      0.07 | 1960 - 1963 |
 
 ``` r
 # add an indicator if series is incomplete 
@@ -767,12 +644,12 @@ scale transformation like log or square root.
 ggplot(wdi, aes(x = year, y = infmort, group = gwcode, 
                 color = has_missing)) +
   geom_line(alpha = 0.5) +
-  theme_light() 
+  theme_light()
 ```
 
-    ## Warning: Removed 441 row(s) containing missing values (geom_path).
+    ## Warning: Removed 400 row(s) containing missing values (geom_path).
 
-![](clean-data_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](clean-data_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
 Compare log-linear and square root linear models.
 
@@ -794,9 +671,9 @@ table(fit$model, cut(fit$r2, c(0, .4, .5, .6, .7, .8, .9, 1)))
 
     ##           
     ##            (0,0.4] (0.4,0.5] (0.5,0.6] (0.6,0.7] (0.7,0.8] (0.8,0.9] (0.9,1]
-    ##   mdl_log        1         1         2         2         4        17     150
-    ##   mdl_mix        1         1         2         3         4        24     142
-    ##   mdl_sqrt       1         2         1         3         6        23     141
+    ##   mdl_log        2         1         1         2         4        17     150
+    ##   mdl_mix        2         1         1         3         6        23     141
+    ##   mdl_sqrt       2         2         0         3         6        25     139
 
 ``` r
 fit %>% 
@@ -813,12 +690,12 @@ fit %>%
     ## # Groups:   model [3]
     ##   model    has_missing countries mean_r2 median_r2
     ##   <chr>    <lgl>           <int>   <dbl>     <dbl>
-    ## 1 mdl_sqrt FALSE             138    0.92      0.96
-    ## 2 mdl_mix  FALSE             138    0.93      0.96
-    ## 3 mdl_log  FALSE             138    0.94      0.97
-    ## 4 mdl_mix  TRUE               39    0.93      0.96
-    ## 5 mdl_sqrt TRUE               39    0.93      0.96
-    ## 6 mdl_log  TRUE               39    0.94      0.96
+    ## 1 mdl_sqrt FALSE             140    0.92      0.96
+    ## 2 mdl_mix  FALSE             140    0.93      0.96
+    ## 3 mdl_log  FALSE             140    0.94      0.97
+    ## 4 mdl_mix  TRUE               37    0.93      0.96
+    ## 5 mdl_sqrt TRUE               37    0.93      0.96
+    ## 6 mdl_log  TRUE               37    0.94      0.96
 
 If a model is not performing well on a series where we are not looking
 to impute, who cares. Look at low R2 models for series we are looking to
@@ -862,20 +739,18 @@ wdi %>%
   theme_light()
 ```
 
-    ## Warning: Removed 112 rows containing non-finite values (stat_smooth).
+    ## Warning: Removed 103 rows containing non-finite values (stat_smooth).
 
-    ## Warning: Removed 112 rows containing non-finite values (stat_smooth).
+    ## Warning: Removed 103 rows containing non-finite values (stat_smooth).
 
-    ## Warning: Removed 112 row(s) containing missing values (geom_path).
+    ## Warning: Removed 103 row(s) containing missing values (geom_path).
 
-![](clean-data_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](clean-data_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 The log-lienar and square root models both perform about equally well.
 What do the imputed values look like?
 
 ``` r
-# this block will fail if there are any cases left that have head or tail missing
-# values, which by this point should not be the case
 wdi <- wdi %>%
   group_by(gwcode) %>%
   arrange(gwcode, year) %>%
@@ -902,9 +777,9 @@ ggplot(wdi, aes(x = year)) +
   theme_light()
 ```
 
-    ## Warning: Removed 441 row(s) containing missing values (geom_path).
+    ## Warning: Removed 400 row(s) containing missing values (geom_path).
 
-![](clean-data_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](clean-data_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
 The square root model’s imputed values are less aggressive in their
 extrapolation so I will pick that.
@@ -946,10 +821,7 @@ wdi <- wdi %>%
 ``` r
 wdi <- wdi %>% 
   ungroup() %>%
-  select(gwcode, year, infmort, infmort_yearadj, infmort_imputed) %>%
-  # UPDATE: make sure it's clear these are lagged (if they are)
-  rename(lag1_infmort = infmort, lag1_infmort_yearadj = infmort_yearadj,
-         lag1_infmort_imputed = infmort_imputed) 
+  select(gwcode, year, infmort, infmort_yearadj, infmort_imputed) 
 
 # Keep a summary of the data so changes in the future are easier to track on 
 # git
