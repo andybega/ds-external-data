@@ -1,32 +1,43 @@
----
-title: "GDP imputation"
-author: "Andreas Beger, Basil Analytics"
-date: "`r Sys.Date()`"
-output: 
-  github_document: 
-    toc: yes
----
+GDP
+================
+Author: Andreas Beger
 
-*Last updated on: `r Sys.Date()`*
+Last updated on: 23 March 2023
 
-For updating the data, all items requiring attention are marked with "UPDATE:".
+This file is generated from clean-gdp.R. To spint/knit/compile the .md
+file, run:  
+`setwd("gdp"); rmarkdown::render("clean-gdp.R")`
 
-UPDATE: This script uses `population.csv` as an input for calculating GDP per capita. Drop in an updated version from `population/` if needed. 
+For updating the data, all items requiring attention are marked with
+“UPDATE:”.
 
-The WDI GDP data, cached in the input folder, also need to be updated. Delete `input/wdigdp.csv` for that to happen automatically (or see the UPDATE: below).
+UPDATE: This script uses `population.csv` as an input for calculating
+GDP per capita. Drop in an updated version from `population/` if needed.
 
-The other inputs (KSG and UN GDP) only concern historical data so they should not need to be updated. 
+The WDI GDP data, cached in the input folder, also need to be updated.
+Delete `input/wdigdp.csv` for that to happen automatically (or see the
+UPDATE: below).
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+The other inputs (KSG and UN GDP) only concern historical data so they
+should not need to be updated.
 
-library(tidyverse)
-library(WDI)
-library(states)
-library(lubridate)
-library(countrycode)
-library(lme4)
-library(imputeTS)
+``` r
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(WDI)
+  library(states)
+  library(lubridate)
+  library(countrycode)
+  library(lme4)
+  library(imputeTS)
+  library(here)
+})
+
+oldwd <- getwd()
+setwd(here::here("gdp"))
+
+
+# Functions ---------------------------------------------------------------
 
 gdp_wdi_add_gwcode <- function(x) {
   starty <- min(x$year)
@@ -112,9 +123,19 @@ gdp_un_add_gwcode <- function(x) {
   cy
 }
 
+# Check whether the mtime of a file is from last year (i.e. forgot to update)
+check_mtime <- function(x) {
+  myear <- substr(as.Date(file.info(x)['mtime'][[1]]), 1, 4)
+  if (myear < substr(Sys.Date(), 1, 4)) {
+    warning(sprintf("'%s' is from last year, forgot to drop in an update?", x))
+  }
+  invisible(myear)
+}
+
 load_inputs <- function() {
   # don't want column specification messages
   suppressMessages({
+    check_mtime("input/wdigdp.csv")
     wdigdp <- read.csv("input/wdigdp.csv")[, c("iso2c", "country", "year", "NY.GDP.MKTP.KD")]
     
     ksggdp <- read_delim("input/expgdpv6.0/gdpv6.txt", delim = "\t") %>%
@@ -124,6 +145,7 @@ load_inputs <- function() {
     ungdp <- read_csv("input/UNgdpData.csv") %>%
       select(country_name, country_id, year, gdp_2010USD)
     
+    check_mtime("input/population.csv")
     pop <- read_csv("input/population.csv")
   })
 
@@ -243,83 +265,127 @@ gdp_get_yearly <- function(impute, inputs = load_inputs()) {
 }
 
 
-```
 
+
+
+# Load/clean inputs -------------------------------------------------------
+```
 
 ## WDI GDP data
 
 Relevant WDI indicators:
 
-```
-"NY.GDP.PCAP.PP.KD.ZG"
-"NY.GDP.PCAP.PP.KD"
-"NY.GDP.PCAP.KD.ZG"
-"NY.GDP.PCAP.KD"
-"NY.GDP.MKTP.PP.CD"  # GDP per capita (constant 2011 international $)
-"NY.GDP.MKTP.PP.KD"  # GDP per capita (constant 2020 US$)
-"NY.GDP.MKTP.KD"     # GDP (constant 2010 US$)
-"NY.GDP.MKTP.KD.ZG"  # GDP growth
-"SP.POP.TOTL"
-```
+- “NY.GDP.PCAP.PP.KD.ZG”
+- “NY.GDP.PCAP.PP.KD”
+- “NY.GDP.PCAP.KD.ZG”
+- “NY.GDP.PCAP.KD”
+- “NY.GDP.MKTP.PP.CD”: GDP per capita (constant 2011 international \$)
+- “NY.GDP.MKTP.PP.KD”: GDP per capita (constant 2020 US\$)
+- “NY.GDP.MKTP.KD”: GDP (constant 2010 US\$)
+- “NY.GDP.MKTP.KD.ZG”: GDP growth
+- “SP.POP.TOTL”
 
-UPDATE: delete `input/wdigdp.csv` and run the chunk below to re-download and cache the latest WDI GDP data. 
+UPDATE: delete `input/wdigdp.csv` and run the chunk below to re-download
+and cache the latest WDI GDP data.
 
-```{r cache-wdi}
+``` r
 if (!file.exists("input/wdigdp.csv")) {
-  wdi1 <- WDI(country = "all", start = 1960, end = 2020,
+  # UPDATE: end year
+  wdi1 <- WDI(country = "all", start = 1960, end = 2023,
               indicator = c("NY.GDP.MKTP.PP.KD"))
-  wdi2 <- WDI(country = "all", start = 1960, end = 2020,
+  wdi2 <- WDI(country = "all", start = 1960, end = 2023,
               indicator = c("NY.GDP.MKTP.PP.CD"))
-  wdi3 <- WDI(country = "all", start = 1960, end = 2020,
+  wdi3 <- WDI(country = "all", start = 1960, end = 2023,
               indicator = c("NY.GDP.MKTP.KD"))
   wdigdp <- Reduce(left_join, list(wdi1, wdi2, wdi3))
   write.csv(wdigdp, file = "input/wdigdp.csv", row.names = FALSE)
 }
 
 wdigdp <- read.csv("input/wdigdp.csv")
-```
 
 
-```{r}
+
+
 wdi <- gdp_wdi_add_gwcode(wdigdp)
 
 plot_missing(wdi, "NY.GDP.MKTP.KD", "gwcode", time = "year", 
              statelist = "GW") +
   ggtitle("NY.GDP.MKTP.KD")
+```
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
+
+``` r
 plot_missing(wdi, "NY.GDP.MKTP.PP.KD", "gwcode",  time =  "year", 
              statelist = "GW") +
   ggtitle("NY.GDP.MKTP.PP.KD")
+```
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-2-2.png)<!-- -->
+
+``` r
 plot_missing(wdi, "NY.GDP.MKTP.PP.CD", "gwcode",  time =  "year", 
              statelist = "GW") +
   ggtitle("NY.GDP.MKTP.PP.CD")
-
 ```
 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-2-3.png)<!-- -->
 
 ## KSG expanded GDP
 
-```{r}
+``` r
 ksggdp <- read_delim("input/expgdpv6.0/gdpv6.txt", delim = "\t") %>%
   rename(gwcode = statenum) %>%
   select(-stateid)
+```
 
+    ## Rows: 9627 Columns: 8
+    ## ── Column specification ────────────────────────────────────────────────────────────────
+    ## Delimiter: "\t"
+    ## chr (1): stateid
+    ## dbl (7): statenum, year, pop, realgdp, rgdppc, cgdppc, origin
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
 plot_missing(ksggdp, "realgdp", "gwcode", time = "year", statelist = "GW")
 ```
 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+
 ## UN GDP data
 
-```{r}
+``` r
 ungdp <- read_csv("input/UNgdpData.csv") %>%
   select(country_name, country_id, year, gdp_2010USD) 
+```
 
+    ## Rows: 8272 Columns: 7
+    ## ── Column specification ────────────────────────────────────────────────────────────────
+    ## Delimiter: ","
+    ## chr (1): country_name
+    ## dbl (6): country_id, year, gdp_2010USD, gdp_2010USD_log, gdp_2010USD_lagged, gdp_201...
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
 ungdp <- gdp_un_add_gwcode(ungdp)  
 plot_missing(ungdp, "gdp_2010USD", "gwcode", time = "year", statelist = "GW")
 ```
 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+``` r
+# Combine data ------------------------------------------------------------
+```
+
 ## Combine data
 
-```{r}
+``` r
 joint <- wdi %>%
+  select(-iso3c) %>%
   full_join(., ksggdp, by = c("gwcode", "year")) %>%
   select(-pop, -rgdppc, -cgdppc) %>%
   mutate(realgdp = realgdp*1e6) %>%
@@ -336,17 +402,28 @@ countries <- unique(c(
 
 The UN GDP data is almost completely correlated with WDI GDP.
 
-```{r}
+``` r
 # the UN GDP is almost completely correlated with WDI GDP
 sum(complete.cases(joint[, c("gdp_2010USD", "NY.GDP.MKTP.KD")]))
-cor(joint$gdp_2010USD, joint$NY.GDP.MKTP.KD, use = "complete.obs")
+```
 
+    ## [1] 6592
+
+``` r
+cor(joint$gdp_2010USD, joint$NY.GDP.MKTP.KD, use = "complete.obs")
+```
+
+    ## [1] 0.9911905
+
+``` r
 plot(log10(joint$gdp_2010USD), log10(joint$NY.GDP.MKTP.KD))
 ```
 
-Does it add any non-missing values? Yes, about 800 or so. 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
 
-```{r}
+Does it add any non-missing values? Yes, about 800 or so.
+
+``` r
 # does it add any non-missing values?
 joint %>%
   mutate(un_gdp_missing = is.na(gdp_2010USD),
@@ -355,9 +432,21 @@ joint %>%
   summarize(n = n())
 ```
 
-For which countries? Somalia, Syria, ...
+    ## `summarise()` has grouped output by 'un_gdp_missing'. You can override using the
+    ## `.groups` argument.
 
-```{r}
+    ## # A tibble: 4 × 3
+    ## # Groups:   un_gdp_missing [2]
+    ##   un_gdp_missing wdi_gdp_missing     n
+    ##   <lgl>          <lgl>           <int>
+    ## 1 FALSE          FALSE            6592
+    ## 2 FALSE          TRUE              917
+    ## 3 TRUE           FALSE            2338
+    ## 4 TRUE           TRUE             1750
+
+For which countries? Somalia, Syria, …
+
+``` r
 # which countries?
 adds <- joint %>% 
   filter(is.na(NY.GDP.MKTP.KD) & !is.na(gdp_2010USD)) %>%
@@ -366,8 +455,17 @@ adds <- joint %>%
 head(arrange(adds, desc(adds)))
 ```
 
+    ## # A tibble: 6 × 2
+    ##   gwcode  adds
+    ##    <dbl> <int>
+    ## 1    101    47
+    ## 2    731    47
+    ## 3    520    43
+    ## 4    345    37
+    ## 5    522    36
+    ## 6    700    32
 
-```{r}
+``` r
 # look at some examples of those
 set.seed(1343)
 countries2 <- unique(c(c(290, 345), 
@@ -382,6 +480,16 @@ joint %>%
   ggplot(aes(x = year, y = value, colour = var, group = interaction(gwcode, var))) +
   geom_line(alpha = .5) +
   facet_wrap(~ gwcode, scales = "free_y")
+```
+
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
+
+    ## Warning: Removed 862 rows containing missing values (`geom_line()`).
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
+``` r
 joint %>%
   gather(var, value, -gwcode, -year, -origin, -NY.GDP.MKTP.PP.KD, -gdp_2010USD) %>%
   filter(gwcode %in% countries) %>%
@@ -390,24 +498,69 @@ joint %>%
   facet_wrap(~ gwcode, scales = "free_y")
 ```
 
-Rescaled UN GDP matches WDI very well, it seems. Adjusted R^2 is basically 1 and so is the coefficient. 
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
 
-## Overlap between KSG expanded and WDI
+    ## Warning: Removed 968 rows containing missing values (`geom_line()`).
 
-```{r}
+![](clean-gdp_files/figure-gfm/unnamed-chunk-8-2.png)<!-- -->
+
+Rescaled UN GDP matches WDI very well, it seems. Adjusted R^2 is
+basically 1 and so is the coefficient.
+
+### Overlap between KSG expanded and WDI
+
+``` r
 sum(complete.cases(joint[, c("realgdp", "NY.GDP.MKTP.PP.KD")]))
-cor(joint$realgdp, joint$NY.GDP.MKTP.PP.KD, use = "complete.obs")
+```
 
+    ## [1] 3758
+
+``` r
+cor(joint$realgdp, joint$NY.GDP.MKTP.PP.KD, use = "complete.obs")
+```
+
+    ## [1] 0.9932796
+
+``` r
 sum(complete.cases(joint[, c("realgdp", "NY.GDP.MKTP.KD")]))
+```
+
+    ## [1] 7055
+
+``` r
 cor(joint$realgdp, joint$NY.GDP.MKTP.KD, use = "complete.obs")
 ```
 
-Plain linear rescaling doesn't work well.
+    ## [1] 0.9697244
 
-```{r}
-# Plain linear rescaling; doesn't work well
+Plain linear rescaling doesn’t work well.
+
+``` r
 mdl <- lm(NY.GDP.MKTP.KD ~ -1 + realgdp, data = joint)
 summary(mdl)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = NY.GDP.MKTP.KD ~ -1 + realgdp, data = joint)
+    ## 
+    ## Residuals:
+    ##        Min         1Q     Median         3Q        Max 
+    ## -3.542e+12 -1.520e+10 -2.111e+09  4.796e+08  2.304e+12 
+    ## 
+    ## Coefficients:
+    ##         Estimate Std. Error t value Pr(>|t|)    
+    ## realgdp 1.089638   0.003191   341.5   <2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 2.389e+11 on 7054 degrees of freedom
+    ##   (4542 observations deleted due to missingness)
+    ## Multiple R-squared:  0.943,  Adjusted R-squared:  0.943 
+    ## F-statistic: 1.166e+05 on 1 and 7054 DF,  p-value: < 2.2e-16
+
+``` r
 joint <- joint %>%
   mutate(realgdp.rescaled = predict(mdl, newdata = joint))
 joint %>%
@@ -416,17 +569,54 @@ joint %>%
   ggplot(aes(x = year, y = value, colour = var, group = interaction(gwcode, var))) +
   geom_line(alpha = .5) +
   facet_wrap(~ gwcode, scales = "free_y")
+```
 
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
+
+    ## Warning: Removed 785 rows containing missing values (`geom_line()`).
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+``` r
 plot(log10(joint$realgdp), log10(joint$NY.GDP.MKTP.KD))
+```
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-10-2.png)<!-- -->
+
+``` r
 plot(log10(joint$realgdp.rescaled), log10(joint$NY.GDP.MKTP.KD))
 ```
 
-Try log model, also doesn't work super well. 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-10-3.png)<!-- -->
 
-```{r}
-# Try log log model; also doesn't work well
+Try log model, also doesn’t work super well.
+
+``` r
 mdl <- lm(log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp), data = joint)
 summary(mdl)
+```
+
+    ## 
+    ## Call:
+    ## lm(formula = log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp), data = joint)
+    ## 
+    ## Residuals:
+    ##     Min      1Q  Median      3Q     Max 
+    ## -2.1946 -0.3192 -0.0087  0.3801  3.1848 
+    ## 
+    ## Coefficients:
+    ##               Estimate Std. Error t value Pr(>|t|)    
+    ## log(realgdp) 0.9916292  0.0002631    3769   <2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## Residual standard error: 0.5294 on 7054 degrees of freedom
+    ##   (4542 observations deleted due to missingness)
+    ## Multiple R-squared:  0.9995, Adjusted R-squared:  0.9995 
+    ## F-statistic: 1.421e+07 on 1 and 7054 DF,  p-value: < 2.2e-16
+
+``` r
 joint <- joint %>%
   mutate(realgdp.rescaled2 = exp(predict(mdl, newdata = joint)))
 joint %>%
@@ -435,19 +625,41 @@ joint %>%
   ggplot(aes(x = year, y = value, colour = var, group = interaction(gwcode, var))) +
   geom_line() +
   facet_wrap(~ gwcode, scales = "free_y")
+```
 
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
+
+    ## Warning: Removed 895 rows containing missing values (`geom_line()`).
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+
+``` r
 plot(log10(joint$realgdp), log10(joint$NY.GDP.MKTP.KD))
 abline(a = 0, b = 1)
+```
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-11-2.png)<!-- -->
+
+``` r
 plot(log10(joint$realgdp.rescaled2), log10(joint$NY.GDP.MKTP.KD))
 abline(a = 0, b = 1)
 ```
 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-11-3.png)<!-- -->
+
 Try scaling by country:
 
-```{r}
+``` r
 # try country-varying scaling factors; this works fairly well
 library("lme4")
 mdl <- lmer(log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp) + (log(realgdp)|gwcode), data = joint)
+```
+
+    ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, : Model
+    ## failed to converge with max|grad| = 0.00655919 (tol = 0.002, component 1)
+
+``` r
 joint <- joint %>%
   mutate(realgdp.rescaled3 = exp(predict(mdl, newdata = joint, allow.new.levels = TRUE)))
 joint %>%
@@ -457,18 +669,39 @@ joint %>%
   ggplot(aes(x = year, y = value, colour = var, group = interaction(gwcode, var))) +
   geom_line() +
   facet_wrap(~ gwcode, scales = "free_y")
+```
 
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
+
+    ## Warning: Removed 785 rows containing missing values (`geom_line()`).
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+``` r
 plot(log10(joint$realgdp), log10(joint$NY.GDP.MKTP.KD))
 abline(a = 0, b = 1)
+```
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-12-2.png)<!-- -->
+
+``` r
 plot(log10(joint$realgdp.rescaled3), log10(joint$NY.GDP.MKTP.KD))
 abline(a = 0, b = 1)
 ```
 
+![](clean-gdp_files/figure-gfm/unnamed-chunk-12-3.png)<!-- -->
 
-## Joint model of UN and KSG predicting WDI
+### Joint model of UN and KSG predicting WDI
 
-```{r}
+``` r
 mdl_combo <- lmer(log(NY.GDP.MKTP.KD) ~ -1 + log(gdp_2010USD) + log(realgdp) + (log(realgdp)|gwcode), data = joint)
+```
+
+    ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, : Model
+    ## failed to converge with max|grad| = 0.00352668 (tol = 0.002, component 1)
+
+``` r
 joint <- joint %>%
   mutate(NY.GDP.MKTP.KD.hat = exp(predict(mdl_combo, newdata = joint, allow.new.levels = TRUE)))
 joint %>%
@@ -478,6 +711,16 @@ joint %>%
   ggplot(aes(x = year, y = value, colour = var, group = interaction(gwcode, var))) +
   geom_line() +
   facet_wrap(~ gwcode, scales = "free_y")
+```
+
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
+
+    ## Warning: Removed 908 rows containing missing values (`geom_line()`).
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+``` r
 joint %>%
   gather(var, value, -gwcode, -year, -origin, -realgdp, -realgdp.rescaled, -realgdp.rescaled2, -realgdp.rescaled3,
          -starts_with("gdp_2010"), -NY.GDP.MKTP.PP.KD) %>%
@@ -487,24 +730,46 @@ joint %>%
   facet_wrap(~ gwcode, scales = "free_y")
 ```
 
-This works well, but cannot predict when either KSG or UN is missing, so not useful in practice for filling in WDI gaps.
+    ## Warning: attributes are not identical across measure variables;
+    ## they will be dropped
 
-## Conclusion
+    ## Warning: Removed 902 rows containing missing values (`geom_line()`).
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-13-2.png)<!-- -->
+
+This works well, but cannot predict when either KSG or UN is missing, so
+not useful in practice for filling in WDI gaps.
+
+### Conclusion
 
 Four step imputation procedure:
 
-1. Acquire the WDI data
-2. Where WDI is missing, drop in UN GDP figures, scaled by a linear model.
-3. Where WDI is missing, drop in KSG figures, scaled by a log-linear country-varying scaling model.
-4. Model-based extrapolation: use Kalman-smoothing to forward extrapolate missing GDP values (most notably Taiwan and several countries missing current year GDP values) and backward extrapolate GDP growth in first year of existences of a country.  
+1.  Acquire the WDI data
+2.  Where WDI is missing, drop in UN GDP figures, scaled by a linear
+    model.
+3.  Where WDI is missing, drop in KSG figures, scaled by a log-linear
+    country-varying scaling model.
+4.  Model-based extrapolation: use Kalman-smoothing to forward
+    extrapolate missing GDP values (most notably Taiwan and several
+    countries missing current year GDP values) and backward extrapolate
+    GDP growth in first year of existences of a country.
 
 Check leftover missing values before impute:
 
-```{r}
+``` r
 joint <- gdp_get_yearly(impute = FALSE)
+```
 
+    ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, : Model
+    ## failed to converge with max|grad| = 0.00655919 (tol = 0.002, component 1)
+
+``` r
 plot_missing(joint, "NY.GDP.MKTP.KD", "gwcode", time = "year", statelist = "GW")
-  
+```
+
+![](clean-gdp_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
 still_missing <- joint %>% 
   filter(is.na(NY.GDP.MKTP.KD)) %>% 
   group_by(gwcode) %>%
@@ -514,21 +779,50 @@ still_missing <- joint %>%
 still_missing
 ```
 
-Use Kalman smoothing to extrapolate the leftover trailing missing values, and backwards extrapolate first year missing GDP growth. 
+    ## # A tibble: 14 × 3
+    ##    gwcode     n years      
+    ##     <dbl> <int> <chr>      
+    ##  1    396    10 2012 - 2021
+    ##  2    397    10 2012 - 2021
+    ##  3    713    10 2012 - 2021
+    ##  4    223     9 2012 - 2021
+    ##  5    101     5 2017 - 2021
+    ##  6    531     5 2017 - 2021
+    ##  7    565     5 2017 - 2021
+    ##  8    626     5 2017 - 2021
+    ##  9    731     5 2017 - 2021
+    ## 10    678     3 2019 - 2021
+    ## 11    701     2 2020 - 2021
+    ## 12    331     1 2021 - 2021
+    ## 13    652     1 2021 - 2021
+    ## 14    690     1 2021 - 2021
 
-```{r}
+Use Kalman smoothing to extrapolate the leftover trailing missing
+values, and backwards extrapolate first year missing GDP growth.
+
+``` r
 joint <- gdp_get_yearly(impute = TRUE)
+```
 
+    ## Warning in checkConv(attr(opt, "derivs"), opt$par, ctrl = control$checkConv, : Model
+    ## failed to converge with max|grad| = 0.00655919 (tol = 0.002, component 1)
+
+``` r
 plot_missing(joint, "NY.GDP.MKTP.KD", "gwcode", time = "year", statelist = "GW")
 ```
 
-## Check GDP per capita
+![](clean-gdp_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
-This uses "population.csv" from the population module.
+### Check GDP per capita
 
-At least one of the combined GDP values--Qatar in 1971--is clunky in that there is a big discrepancy. This gives Qatar 1971 an inordinarily high GDP per capita value. Solved by backward imputing GDP instead of taking KSG value. 
+This uses “population.csv” from the population module.
 
-```{r check-qatar}
+At least one of the combined GDP values–Qatar in 1971–is clunky in that
+there is a big discrepancy. This gives Qatar 1971 an inordinarily high
+GDP per capita value. Solved by backward imputing GDP instead of taking
+KSG value.
+
+``` r
 check <- joint[joint$gwcode==694, ]
 par(mfrow = c(2, 2))
 for (vn in setdiff(names(check), c("gwcode", "year"))) {
@@ -536,11 +830,18 @@ for (vn in setdiff(names(check), c("gwcode", "year"))) {
 }
 ```
 
-I guess this is fine. (Qatar did really have these crazy high growth periods, checked the 2001 on data.)
+![](clean-gdp_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+
+I guess this is fine. (Qatar did really have these crazy high growth
+periods, checked the 2001 on data.)
+
+``` r
+# Done, write out data ----------------------------------------------------
+```
 
 ## Done, record summary stats and save
 
-```{r}
+``` r
 # Keep a summary of the data so changes in the future are easier to track on 
 # git
 df <- joint
@@ -556,7 +857,34 @@ stats <- list(
 )
 yaml::write_yaml(stats, "output/gdp-signature.yml")
 stats
-
-write_csv(joint, file = "output/gdp.csv")
 ```
 
+    ## $Class
+    ## [1] "tbl_df, tbl, data.frame"
+    ## 
+    ## $Size_in_mem
+    ## [1] "0.8 Mb"
+    ## 
+    ## $N_countries
+    ## [1] 204
+    ## 
+    ## $Years
+    ## [1] "1950 - 2021"
+    ## 
+    ## $N_columns
+    ## [1] 6
+    ## 
+    ## $Columns
+    ## [1] "gwcode, year, NY.GDP.MKTP.KD, NY.GDP.MKTP.KD.ZG, NY.GDP.PCAP.KD, NY.GDP.PCAP.KD.ZG"
+    ## 
+    ## $N_rows
+    ## [1] 11597
+    ## 
+    ## $N_complete_rows
+    ## [1] 11565
+
+``` r
+write_csv(joint, file = "output/gdp.csv")
+
+setwd(oldwd)
+```
