@@ -1,7 +1,7 @@
 G&W states
 ================
 
-*Last updated on: 2022-02-19*
+*Last updated on: 2023-03-24*
 
 G&W states list, and derived indicators like state age.
 
@@ -10,6 +10,8 @@ library(states)
 library(yaml)
 library(lubridate)
 ```
+
+    ## Loading required package: timechange
 
     ## 
     ## Attaching package: 'lubridate'
@@ -42,7 +44,7 @@ to_year <- year(Sys.Date()) - 1
 to_year
 ```
 
-    ## [1] 2021
+    ## [1] 2022
 
 ``` r
 out <- state_panel(lubridate::year(min(gwstates$start)), to_year, 
