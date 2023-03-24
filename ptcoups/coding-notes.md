@@ -1,7 +1,7 @@
 P&T Coups
 ================
 
-*Last updated on 2022-02-19*
+*Last updated on 2023-03-24*
 
 ## Update raw coup data
 
@@ -45,7 +45,8 @@ coups <- coups %>%
                    pt_failed = as.integer(pt_failed_num > 0))
 ```
 
-    ## `summarise()` has grouped output by 'ccode'. You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'ccode'. You can override using the
+    ## `.groups` argument.
 
 ``` r
 stopifnot(

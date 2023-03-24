@@ -1,7 +1,7 @@
 P&T Coups
 ================
 
-*Last updated on 2022-02-19*
+*Last updated on 2023-03-24*
 
 Coup data-derived indicators for 1950 to the present.
 
@@ -20,11 +20,9 @@ coups <- read_csv("output/ptcoups.csv")
 ```
 
     ## Rows: 11793 Columns: 20
-
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (20): gwcode, year, pt_attempt, pt_attempt_num, pt_coup_num, pt_coup, pt...
-
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
