@@ -1,24 +1,23 @@
 WDI Infant mortality
 ================
 
--   [Functions / packages](#functions--packages)
--   [Get raw data](#get-raw-data)
--   [Clean raw data](#clean-raw-data)
-    -   [Normalize to G&W statelist](#normalize-to-gw-statelist)
--   [Handle missing values](#handle-missing-values)
-    -   [Add custom series for several historical entities like
-        GDR](#add-custom-series-for-several-historical-entities-like-gdr)
-    -   [Drop countries completely
-        missing](#drop-countries-completely-missing)
-    -   [Carry-back impute lag-induced missing
-        data](#carry-back-impute-lag-induced-missing-data)
-    -   [Check remaining missing
-        values](#check-remaining-missing-values)
-    -   [Find imputation model](#find-imputation-model)
--   [Add year-normalized version](#add-year-normalized-version)
--   [Done, save](#done-save)
+- [Functions / packages](#functions--packages)
+- [Get raw data](#get-raw-data)
+- [Clean raw data](#clean-raw-data)
+  - [Normalize to G&W statelist](#normalize-to-gw-statelist)
+- [Handle missing values](#handle-missing-values)
+  - [Add custom series for several historical entities like
+    GDR](#add-custom-series-for-several-historical-entities-like-gdr)
+  - [Drop countries completely
+    missing](#drop-countries-completely-missing)
+  - [Carry-back impute lag-induced missing
+    data](#carry-back-impute-lag-induced-missing-data)
+  - [Check remaining missing values](#check-remaining-missing-values)
+  - [Find imputation model](#find-imputation-model)
+- [Add year-normalized version](#add-year-normalized-version)
+- [Done, save](#done-save)
 
-*Last updated on 07 March 2022*
+*Last updated on 24 March 2023*
 
 Note that places that require attention during data updates are marked
 with *UPDATE:*
@@ -37,16 +36,14 @@ library(WDI)
 library(tidyverse)
 ```
 
-    ## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──
-
-    ## ✓ ggplot2 3.3.5     ✓ purrr   0.3.4
-    ## ✓ tibble  3.1.5     ✓ dplyr   1.0.7
-    ## ✓ tidyr   1.1.4     ✓ stringr 1.4.0
-    ## ✓ readr   2.0.2     ✓ forcats 0.5.1
-
+    ## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
+    ## ✔ ggplot2 3.4.0      ✔ purrr   1.0.0 
+    ## ✔ tibble  3.1.8      ✔ dplyr   1.0.10
+    ## ✔ tidyr   1.2.1      ✔ stringr 1.5.0 
+    ## ✔ readr   2.1.3      ✔ forcats 0.5.2 
     ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-    ## x dplyr::filter() masks stats::filter()
-    ## x dplyr::lag()    masks stats::lag()
+    ## ✖ dplyr::filter() masks stats::filter()
+    ## ✖ dplyr::lag()    masks stats::lag()
 
 ``` r
 library(states)
@@ -54,7 +51,7 @@ library(states)
 
     ## 
     ## Attaching package: 'states'
-
+    ## 
     ## The following object is masked from 'package:readr':
     ## 
     ##     parse_date
@@ -63,9 +60,10 @@ library(states)
 library(lubridate)
 ```
 
+    ## Loading required package: timechange
     ## 
     ## Attaching package: 'lubridate'
-
+    ## 
     ## The following objects are masked from 'package:base':
     ## 
     ##     date, intersect, setdiff, union
@@ -216,24 +214,25 @@ if (!file.exists("input/infmort.csv")) {
 raw <- read_csv("input/infmort.csv")
 ```
 
-    ## Rows: 16226 Columns: 5
-
+    ## Rows: 16492 Columns: 5
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
-    ## chr (2): iso2c, country
-    ## dbl (3): year, SP.DYN.IMRT.IN, SH.DYN.MORT
-
+    ## chr (3): country, iso2c, iso3c
+    ## dbl (2): year, SP.DYN.IMRT.IN
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 
 ``` r
 # UPDATE: check this is still the case
-# In the raw data all values for 2020 are missing; drop that year from the data
-# 2022-03-07: got it now
-last_year <- filter(raw, year==max(year))
-#stopifnot(all(is.na(last_year[["SP.DYN.IMRT.IN"]])))
-#raw <- filter(raw, year!=max(year))
+# drop the last year if it is completely missing
+drop_year <- raw %>% 
+  group_by(year) %>% 
+  summarize(missing = sum(is.na(SP.DYN.IMRT.IN)), n = n()) %>% 
+  filter(missing==n)
+if (nrow(drop_year) > 0) {
+  stop("implement the by-year dropping")
+}
 
 # convert to G&W system
 wdi <- raw %>%
@@ -252,51 +251,51 @@ knitr::kable(nogwcode)
 
 | iso2c | country                        |   n |
 |:------|:-------------------------------|----:|
-| AG    | Antigua and Barbuda            |  61 |
-| AS    | American Samoa                 |  61 |
-| AW    | Aruba                          |  61 |
-| BM    | Bermuda                        |  61 |
-| CW    | Curacao                        |  61 |
-| DM    | Dominica                       |  61 |
-| FM    | Micronesia, Fed. Sts.          |  61 |
-| FO    | Faroe Islands                  |  61 |
-| GD    | Grenada                        |  61 |
-| GI    | Gibraltar                      |  61 |
-| GL    | Greenland                      |  61 |
-| GU    | Guam                           |  61 |
-| HK    | Hong Kong SAR, China           |  61 |
-| IM    | Isle of Man                    |  61 |
-| JG    | Channel Islands                |  61 |
-| KI    | Kiribati                       |  61 |
-| KN    | St. Kitts and Nevis            |  61 |
-| KY    | Cayman Islands                 |  61 |
-| LC    | St. Lucia                      |  61 |
-| LI    | Liechtenstein                  |  61 |
-| MC    | Monaco                         |  61 |
-| MF    | St. Martin (French part)       |  61 |
-| MH    | Marshall Islands               |  61 |
-| MO    | Macao SAR, China               |  61 |
-| MP    | Northern Mariana Islands       |  61 |
-| NC    | New Caledonia                  |  61 |
-| NR    | Nauru                          |  61 |
-| PF    | French Polynesia               |  61 |
-| PR    | Puerto Rico                    |  61 |
-| PS    | West Bank and Gaza             |  61 |
-| PW    | Palau                          |  61 |
-| SC    | Seychelles                     |  61 |
-| SM    | San Marino                     |  61 |
-| ST    | Sao Tome and Principe          |  61 |
-| SX    | Sint Maarten (Dutch part)      |  61 |
-| TC    | Turks and Caicos Islands       |  61 |
-| TO    | Tonga                          |  61 |
-| TV    | Tuvalu                         |  61 |
-| VC    | St. Vincent and the Grenadines |  61 |
-| VG    | British Virgin Islands         |  61 |
-| VI    | Virgin Islands (U.S.)          |  61 |
-| VU    | Vanuatu                        |  61 |
-| WS    | Samoa                          |  61 |
-| ZH    | Africa Eastern and Southern    |  61 |
-| ZI    | Africa Western and Central     |  61 |
+| AG    | Antigua and Barbuda            |  62 |
+| AS    | American Samoa                 |  62 |
+| AW    | Aruba                          |  62 |
+| BM    | Bermuda                        |  62 |
+| CW    | Curacao                        |  62 |
+| DM    | Dominica                       |  62 |
+| FM    | Micronesia, Fed. Sts.          |  62 |
+| FO    | Faroe Islands                  |  62 |
+| GD    | Grenada                        |  62 |
+| GI    | Gibraltar                      |  62 |
+| GL    | Greenland                      |  62 |
+| GU    | Guam                           |  62 |
+| HK    | Hong Kong SAR, China           |  62 |
+| IM    | Isle of Man                    |  62 |
+| JG    | Channel Islands                |  62 |
+| KI    | Kiribati                       |  62 |
+| KN    | St. Kitts and Nevis            |  62 |
+| KY    | Cayman Islands                 |  62 |
+| LC    | St. Lucia                      |  62 |
+| LI    | Liechtenstein                  |  62 |
+| MC    | Monaco                         |  62 |
+| MF    | St. Martin (French part)       |  62 |
+| MH    | Marshall Islands               |  62 |
+| MO    | Macao SAR, China               |  62 |
+| MP    | Northern Mariana Islands       |  62 |
+| NC    | New Caledonia                  |  62 |
+| NR    | Nauru                          |  62 |
+| PF    | French Polynesia               |  62 |
+| PR    | Puerto Rico                    |  62 |
+| PS    | West Bank and Gaza             |  62 |
+| PW    | Palau                          |  62 |
+| SC    | Seychelles                     |  62 |
+| SM    | San Marino                     |  62 |
+| ST    | Sao Tome and Principe          |  62 |
+| SX    | Sint Maarten (Dutch part)      |  62 |
+| TC    | Turks and Caicos Islands       |  62 |
+| TO    | Tonga                          |  62 |
+| TV    | Tuvalu                         |  62 |
+| VC    | St. Vincent and the Grenadines |  62 |
+| VG    | British Virgin Islands         |  62 |
+| VI    | Virgin Islands (U.S.)          |  62 |
+| VU    | Vanuatu                        |  62 |
+| WS    | Samoa                          |  62 |
+| ZH    | Africa Eastern and Southern    |  62 |
+| ZI    | Africa Western and Central     |  62 |
 
 ``` r
 # Take those out
@@ -415,11 +414,14 @@ taiwan <- read_csv("input/Taiwan_infmort.csv",
 # UPDATE: instead of updating a spreadsheet, I just manually dropped in recent 
 # value by going to the MOH website and looking at the latest Cause of Deaths 
 # report
+# https://www.mohw.gov.tw/np-128-2.html
+# 2023-03-24: no update for 2021 yet, but dropped in 2020 values
 taiwan <- taiwan %>%
   add_row(gwcode = 713, year = 2018, infmort_new = 4.16) %>%
   add_row(gwcode = 713, year = 2019, infmort_new = 3.83) %>%
-  # Don't have 2020 values yet, but let's just say it's same as 2019
-  add_row(gwcode = 713, year = 2020, infmort_new = 3.83)
+  add_row(gwcode = 713, year = 2020, infmort_new = 3.63) %>%
+  # Don't have 2021 values yet, but let's just say it's same as 2020
+  add_row(gwcode = 713, year = 2021, infmort_new = 3.63)
 
 # drop in values
 wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
@@ -431,28 +433,53 @@ wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
 
 <https://ec.europa.eu/eurostat/databrowser/view/tps00027/default/table?lang=en>
 
-``` r
-# kosovo <- read_xlsx("Kosovo_infmort_data_EC.xlsx", sheet = 3, skip = 8) %>% 
-#   filter(TIME == "Kosovo (under United Nations Security Council Resolution 1244/99)") %>% 
-#   select(-contains("...")) %>% 
-#   rename(year = "TIME") %>%
-#   mutate(`2013` = as.numeric(NA), 
-#          `2014` = as.numeric(NA)) %>% 
-#   gather(key = "year", value = "infmort_new") %>% 
-#   mutate(country_name = "Kosovo", 
-#          gwcode = 347, 
-#          infmort_new = as.numeric(infmort_new)) %>% 
-#   mutate(infmort_new = case_when(year == 2013 ~ 10.83333, TRUE ~ infmort_new), # There are 2 NAs -- 2013, 2014. I'm going to spread the difference between 2012 and 2015 ((9.7 - 11.4) / 3) + 11.4
-#           infmort_new = case_when(year == 2014 ~ 10.26666, TRUE ~ infmort_new)) ## ((9.7 - 11.4) / 3) + 10.83333 
-# write_csv(kosovo, "C:/Users/rickm/Dropbox/Closing Space/Data/infmort/kosovo_infmort.csv")
+Download as TSV. The years available change, so keep “part1” around and
+don’t overwrite it.
 
-kosovo <- read_csv("input/kosovo_infmort.csv",
+``` r
+tps <- read_tsv("input/tps00027_page_tabular.tsv")
+```
+
+    ## Rows: 54 Columns: 13
+    ## ── Column specification ────────────────────────────────────────────────────────
+    ## Delimiter: "\t"
+    ## chr (13): freq,unit,indic_de,geo\TIME_PERIOD, 2010, 2011, 2012, 2013, 2014, ...
+    ## 
+    ## ℹ Use `spec()` to retrieve the full column specification for this data.
+    ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
+
+``` r
+# ugh, the first column uses comma's to mix the unit keys. fantastic.
+kos <- tps[grepl("XK", tps[[1]]), ]
+# wide to long...with base R
+kos <- reshape(kos, direction = "long", varying = list(2:ncol(kos)), 
+               v.names = "infmort_new", idvar = names(kos[1]), 
+               timevar = "year", times = as.integer(names(kos)[2:ncol(kos)]))
+names(kos)[1] <- "country_name"
+kos[[1]] <- "Kosovo"
+kos$gwcode <- 347L
+kos <- kos[, c("year", "infmort_new", "country_name", "gwcode")]
+kos$infmort_new[kos$infmort_new==":"] <- NA
+kos$infmort_new <- as.double(kos$infmort_new)
+write.csv(kos, "input/kosovo_infmort_part2.csv", row.names = FALSE)
+
+kos1 <- read_csv("input/kosovo_infmort_part1.csv",
                    col_types = cols(
   year = col_double(),
   infmort_new = col_double(),
   country_name = col_character(),
   gwcode = col_double()
 ))
+kos2 <- read_csv("input/kosovo_infmort_part2.csv",
+                   col_types = cols(
+  year = col_double(),
+  infmort_new = col_double(),
+  country_name = col_character(),
+  gwcode = col_double()
+))
+kos1 <- kos1[!kos1$year %in% kos2$year, ]
+kosovo <- rbind(kos1, kos2)
+
 # drop in values
 wdi <- left_join(wdi, kosovo, by = c("gwcode", "year")) %>%
   mutate(infmort = ifelse(is.na(infmort), infmort_new, infmort)) %>%
@@ -477,32 +504,32 @@ missing_country %>%
 
 | gwcode | country               |   n |
 |-------:|:----------------------|----:|
-|     54 | Dominica              |  43 |
-|     55 | Grenada               |  47 |
-|     56 | Saint Lucia           |  42 |
-|     57 | Saint Vincent         |  42 |
-|     58 | Antigua & Barbuda     |  40 |
-|     60 | Saint Kitts and Nevis |  38 |
-|    221 | Monaco                |  61 |
-|    223 | Liechtenstein         |  61 |
+|     54 | Dominica              |  44 |
+|     55 | Grenada               |  48 |
+|     56 | Saint Lucia           |  43 |
+|     57 | Saint Vincent         |  43 |
+|     58 | Antigua & Barbuda     |  41 |
+|     60 | Saint Kitts and Nevis |  39 |
+|    221 | Monaco                |  62 |
+|    223 | Liechtenstein         |  62 |
 |    315 | Czechoslovakia        |  33 |
-|    331 | San Marino            |  61 |
-|    396 | Abkhazia              |  13 |
-|    397 | South Ossetia         |  13 |
-|    403 | Sao Tome and Principe |  46 |
+|    331 | San Marino            |  62 |
+|    396 | Abkhazia              |  14 |
+|    397 | South Ossetia         |  14 |
+|    403 | Sao Tome and Principe |  47 |
 |    511 | Zanzibar              |   2 |
-|    591 | Seychelles            |  45 |
+|    591 | Seychelles            |  46 |
 |    680 | South Yemen           |  24 |
 |    817 | South Vietnam         |  16 |
-|    935 | Vanuatu               |  41 |
-|    970 | Kiribati              |  42 |
-|    971 | Nauru                 |  53 |
-|    972 | Tonga                 |  51 |
-|    973 | Tuvalu                |  43 |
-|    983 | Marshall Islands      |  35 |
-|    986 | Palau                 |  27 |
-|    987 | Micronesia            |  35 |
-|    990 | Samoa/Western Samoa   |  59 |
+|    935 | Vanuatu               |  42 |
+|    970 | Kiribati              |  43 |
+|    971 | Nauru                 |  54 |
+|    972 | Tonga                 |  52 |
+|    973 | Tuvalu                |  44 |
+|    983 | Marshall Islands      |  36 |
+|    986 | Palau                 |  28 |
+|    987 | Micronesia            |  36 |
+|    990 | Samoa/Western Samoa   |  60 |
 
 ``` r
 # Take out countries missing all values
@@ -544,13 +571,13 @@ wdi <- wdi %>%
 sum(is.na(wdi$infmort))
 ```
 
-    ## [1] 405
+    ## [1] 393
 
 ``` r
 sum(is.na(wdi$infmort2))
 ```
 
-    ## [1] 400
+    ## [1] 392
 
 ``` r
 wdi <- wdi %>%
@@ -589,43 +616,44 @@ missing %>%
 
 | gwcode |   N | N_miss | Frac_miss | years       |
 |-------:|----:|-------:|----------:|:------------|
-|    115 |  46 |      8 |      0.17 | 1975 - 1982 |
-|    160 |  61 |      9 |      0.15 | 1960 - 1968 |
-|    230 |  61 |     14 |      0.23 | 1960 - 1973 |
-|    232 |  61 |     25 |      0.41 | 1960 - 1984 |
-|    260 |  61 |      8 |      0.13 | 1960 - 1967 |
-|    339 |  61 |     18 |      0.30 | 1960 - 1977 |
+|    115 |  47 |      8 |      0.17 | 1975 - 1982 |
+|    160 |  62 |      9 |      0.15 | 1960 - 1968 |
+|    232 |  62 |     25 |      0.40 | 1960 - 1984 |
+|    260 |  62 |      8 |      0.13 | 1960 - 1967 |
+|    339 |  62 |     18 |      0.29 | 1960 - 1977 |
 |    345 |  47 |     24 |      0.51 | 1960 - 1983 |
-|    352 |  61 |     11 |      0.18 | 1960 - 1970 |
-|    365 |  61 |     10 |      0.16 | 1960 - 1969 |
-|    404 |  47 |     11 |      0.23 | 1974 - 1984 |
-|    411 |  53 |     14 |      0.26 | 1968 - 1981 |
-|    432 |  61 |      3 |      0.05 | 1960 - 1962 |
-|    436 |  61 |      7 |      0.11 | 1960 - 1966 |
-|    475 |  61 |      4 |      0.07 | 1960 - 1963 |
-|    481 |  61 |      7 |      0.11 | 1960 - 1966 |
-|    483 |  61 |     12 |      0.20 | 1960 - 1971 |
-|    490 |  61 |      9 |      0.15 | 1960 - 1968 |
-|    516 |  59 |      2 |      0.03 | 1962 - 1963 |
-|    520 |  61 |     24 |      0.39 | 1960 - 1983 |
-|    530 |  61 |      6 |      0.10 | 1960 - 1965 |
-|    540 |  46 |      5 |      0.11 | 1975 - 1979 |
-|    560 |  61 |     14 |      0.23 | 1960 - 1973 |
-|    580 |  61 |      8 |      0.13 | 1960 - 1967 |
-|    616 |  61 |      2 |      0.03 | 1960 - 1961 |
-|    630 |  61 |     11 |      0.18 | 1960 - 1970 |
-|    670 |  61 |     12 |      0.20 | 1960 - 1971 |
-|    678 |  61 |      3 |      0.05 | 1960 - 1962 |
-|    698 |  61 |      3 |      0.05 | 1960 - 1962 |
-|    710 |  61 |      9 |      0.15 | 1960 - 1968 |
-|    712 |  61 |     18 |      0.30 | 1960 - 1977 |
-|    713 |  61 |     10 |      0.16 | 1960 - 1969 |
-|    731 |  61 |     25 |      0.41 | 1960 - 1984 |
-|    760 |  61 |      9 |      0.15 | 1960 - 1968 |
-|    775 |  61 |      8 |      0.13 | 1960 - 1967 |
-|    811 |  61 |     15 |      0.25 | 1960 - 1974 |
-|    812 |  61 |     18 |      0.30 | 1960 - 1977 |
-|    816 |  61 |      4 |      0.07 | 1960 - 1963 |
+|    352 |  62 |     11 |      0.18 | 1960 - 1970 |
+|    365 |  62 |     10 |      0.16 | 1960 - 1969 |
+|    404 |  48 |     11 |      0.23 | 1974 - 1984 |
+|    411 |  54 |     14 |      0.26 | 1968 - 1981 |
+|    432 |  62 |      3 |      0.05 | 1960 - 1962 |
+|    436 |  62 |      7 |      0.11 | 1960 - 1966 |
+|    475 |  62 |      4 |      0.06 | 1960 - 1963 |
+|    481 |  62 |      9 |      0.15 | 1960 - 1968 |
+|    483 |  62 |     12 |      0.19 | 1960 - 1971 |
+|    490 |  62 |      9 |      0.15 | 1960 - 1968 |
+|    516 |  60 |      2 |      0.03 | 1962 - 1963 |
+|    520 |  62 |     24 |      0.39 | 1960 - 1983 |
+|    530 |  62 |      6 |      0.10 | 1960 - 1965 |
+|    540 |  47 |      5 |      0.11 | 1975 - 1979 |
+|    553 |  58 |      2 |      0.03 | 1964 - 1965 |
+|    560 |  62 |     14 |      0.23 | 1960 - 1973 |
+|    580 |  62 |      8 |      0.13 | 1960 - 1967 |
+|    616 |  62 |      2 |      0.03 | 1960 - 1961 |
+|    630 |  62 |     11 |      0.18 | 1960 - 1970 |
+|    670 |  62 |     12 |      0.19 | 1960 - 1971 |
+|    678 |  62 |      3 |      0.05 | 1960 - 1962 |
+|    698 |  62 |      3 |      0.05 | 1960 - 1962 |
+|    700 |  62 |      3 |      0.05 | 1960 - 1962 |
+|    710 |  62 |      9 |      0.15 | 1960 - 1968 |
+|    712 |  62 |     18 |      0.29 | 1960 - 1977 |
+|    713 |  62 |     10 |      0.16 | 1960 - 1969 |
+|    731 |  62 |     25 |      0.40 | 1960 - 1984 |
+|    760 |  62 |      8 |      0.13 | 1960 - 1967 |
+|    775 |  62 |      8 |      0.13 | 1960 - 1967 |
+|    811 |  62 |     15 |      0.24 | 1960 - 1974 |
+|    812 |  62 |     18 |      0.29 | 1960 - 1977 |
+|    816 |  62 |      4 |      0.06 | 1960 - 1963 |
 
 ``` r
 # add an indicator if series is incomplete 
@@ -647,7 +675,7 @@ ggplot(wdi, aes(x = year, y = infmort, group = gwcode,
   theme_light()
 ```
 
-    ## Warning: Removed 400 row(s) containing missing values (geom_path).
+    ## Warning: Removed 392 rows containing missing values (`geom_line()`).
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
@@ -671,9 +699,9 @@ table(fit$model, cut(fit$r2, c(0, .4, .5, .6, .7, .8, .9, 1)))
 
     ##           
     ##            (0,0.4] (0.4,0.5] (0.5,0.6] (0.6,0.7] (0.7,0.8] (0.8,0.9] (0.9,1]
-    ##   mdl_log        2         1         1         2         4        17     150
-    ##   mdl_mix        2         1         1         3         6        23     141
-    ##   mdl_sqrt       2         2         0         3         6        25     139
+    ##   mdl_log        1         1         1         2         4        17     151
+    ##   mdl_mix        1         1         1         2         7        24     141
+    ##   mdl_sqrt       1         1         1         2         7        27     138
 
 ``` r
 fit %>% 
@@ -684,18 +712,19 @@ fit %>%
   arrange(has_missing, mean_r2)
 ```
 
-    ## `summarise()` has grouped output by 'model'. You can override using the `.groups` argument.
+    ## `summarise()` has grouped output by 'model'. You can override using the
+    ## `.groups` argument.
 
     ## # A tibble: 6 × 5
     ## # Groups:   model [3]
     ##   model    has_missing countries mean_r2 median_r2
     ##   <chr>    <lgl>           <int>   <dbl>     <dbl>
-    ## 1 mdl_sqrt FALSE             140    0.92      0.96
-    ## 2 mdl_mix  FALSE             140    0.93      0.96
-    ## 3 mdl_log  FALSE             140    0.94      0.97
-    ## 4 mdl_mix  TRUE               37    0.93      0.96
-    ## 5 mdl_sqrt TRUE               37    0.93      0.96
-    ## 6 mdl_log  TRUE               37    0.94      0.96
+    ## 1 mdl_mix  FALSE             139    0.93      0.96
+    ## 2 mdl_sqrt FALSE             139    0.93      0.96
+    ## 3 mdl_log  FALSE             139    0.94      0.98
+    ## 4 mdl_sqrt TRUE               38    0.93      0.96
+    ## 5 mdl_log  TRUE               38    0.94      0.97
+    ## 6 mdl_mix  TRUE               38    0.94      0.96
 
 If a model is not performing well on a series where we are not looking
 to impute, who cares. Look at low R2 models for series we are looking to
@@ -739,11 +768,10 @@ wdi %>%
   theme_light()
 ```
 
-    ## Warning: Removed 103 rows containing non-finite values (stat_smooth).
+    ## Warning: Removed 104 rows containing non-finite values (`stat_smooth()`).
+    ## Removed 104 rows containing non-finite values (`stat_smooth()`).
 
-    ## Warning: Removed 103 rows containing non-finite values (stat_smooth).
-
-    ## Warning: Removed 103 row(s) containing missing values (geom_path).
+    ## Warning: Removed 104 rows containing missing values (`geom_line()`).
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
@@ -777,7 +805,7 @@ ggplot(wdi, aes(x = year)) +
   theme_light()
 ```
 
-    ## Warning: Removed 400 row(s) containing missing values (geom_path).
+    ## Warning: Removed 392 rows containing missing values (`geom_line()`).
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 

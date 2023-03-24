@@ -1,21 +1,19 @@
 WDI Infant mortality
 ================
 
-*Last updated on: 2022-03-07*
+*Last updated on: 2023-03-24*
 
 Infant mortality data for all countries, 1960 on.
 
--   The WDI indicator used for this is “SP.DYN.IMRT.IN”.
--   The data were changed to conform as much as possible to the
-    Gleditsch & Ward state list.
--   Several countries miss early portions of the data series, e.g. for
-    the 50s and 60s. Missing values for those series were imputed using
-    a linear model on the square root of infant mortality,
-    $\\sqrt{Y} = a + b\\times\\textrm{Year}$, where *a* was picked so
-    that the imputed values lined up with the first non-missing
-    observation.
--   “infmort_yearadj” is a scaled version adjusted for annual mean and
-    sd.
+- The WDI indicator used for this is “SP.DYN.IMRT.IN”.
+- The data were changed to conform as much as possible to the Gleditsch
+  & Ward state list.
+- Several countries miss early portions of the data series, e.g. for the
+  50s and 60s. Missing values for those series were imputed using a
+  linear model on the square root of infant mortality,
+  $\sqrt{Y} = a + b\times\textrm{Year}$, where *a* was picked so that
+  the imputed values lined up with the first non-missing observation.
+- “infmort_yearadj” is a scaled version adjusted for annual mean and sd.
 
 ``` r
 library(ggplot2)
@@ -24,7 +22,7 @@ df <- read.csv("output/wdi-infmort.csv")
 str(df)
 ```
 
-    ## 'data.frame':    9481 obs. of  5 variables:
+    ## 'data.frame':    9656 obs. of  5 variables:
     ##  $ gwcode         : int  2 2 2 2 2 2 2 2 2 2 ...
     ##  $ year           : int  1960 1961 1962 1963 1964 1965 1966 1967 1968 1969 ...
     ##  $ infmort        : num  25.9 25.4 24.9 24.4 23.8 23.3 22.7 22 21.3 20.6 ...
@@ -36,12 +34,12 @@ head(df)
 ```
 
     ##   gwcode year infmort infmort_yearadj infmort_imputed
-    ## 1      2 1960    25.9       -1.209497           FALSE
-    ## 2      2 1961    25.4       -1.211508           FALSE
-    ## 3      2 1962    24.9       -1.225003           FALSE
-    ## 4      2 1963    24.4       -1.222520           FALSE
-    ## 5      2 1964    23.8       -1.214422           FALSE
-    ## 6      2 1965    23.3       -1.210065           FALSE
+    ## 1      2 1960    25.9       -1.210196           FALSE
+    ## 2      2 1961    25.4       -1.212574           FALSE
+    ## 3      2 1962    24.9       -1.225736           FALSE
+    ## 4      2 1963    24.4       -1.222832           FALSE
+    ## 5      2 1964    23.8       -1.212248           FALSE
+    ## 6      2 1965    23.3       -1.208175           FALSE
 
 ``` r
 stats <- yaml::read_yaml("output/wdi-infmort-signature.yml")
@@ -58,7 +56,7 @@ stats
     ## [1] 177
     ## 
     ## $Years
-    ## [1] "1960 - 2020"
+    ## [1] "1960 - 2021"
     ## 
     ## $N_columns
     ## [1] 5
@@ -67,10 +65,10 @@ stats
     ## [1] "gwcode, year, infmort, infmort_yearadj, infmort_imputed"
     ## 
     ## $N_rows
-    ## [1] 9481
+    ## [1] 9656
     ## 
     ## $N_complete_rows
-    ## [1] 9481
+    ## [1] 9656
 
 ``` r
 ggplot(df, aes(x = year, y = infmort, group = gwcode)) +

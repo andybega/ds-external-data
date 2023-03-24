@@ -165,11 +165,14 @@ if (!file.exists("input/infmort.csv")) {
 raw <- read_csv("input/infmort.csv")
 
 # UPDATE: check this is still the case
-# In the raw data all values for 2020 are missing; drop that year from the data
-# 2022-03-07: got it now
-last_year <- filter(raw, year==max(year))
-#stopifnot(all(is.na(last_year[["SP.DYN.IMRT.IN"]])))
-#raw <- filter(raw, year!=max(year))
+# drop the last year if it is completely missing
+drop_year <- raw %>% 
+  group_by(year) %>% 
+  summarize(missing = sum(is.na(SP.DYN.IMRT.IN)), n = n()) %>% 
+  filter(missing==n)
+if (nrow(drop_year) > 0) {
+  stop("implement the by-year dropping")
+}
 
 # convert to G&W system
 wdi <- raw %>%
@@ -286,11 +289,14 @@ taiwan <- read_csv("input/Taiwan_infmort.csv",
 # UPDATE: instead of updating a spreadsheet, I just manually dropped in recent 
 # value by going to the MOH website and looking at the latest Cause of Deaths 
 # report
+# https://www.mohw.gov.tw/np-128-2.html
+# 2023-03-24: no update for 2021 yet, but dropped in 2020 values
 taiwan <- taiwan %>%
   add_row(gwcode = 713, year = 2018, infmort_new = 4.16) %>%
   add_row(gwcode = 713, year = 2019, infmort_new = 3.83) %>%
-  # Don't have 2020 values yet, but let's just say it's same as 2019
-  add_row(gwcode = 713, year = 2020, infmort_new = 3.83)
+  add_row(gwcode = 713, year = 2020, infmort_new = 3.63) %>%
+  # Don't have 2021 values yet, but let's just say it's same as 2020
+  add_row(gwcode = 713, year = 2021, infmort_new = 3.63)
 
 # drop in values
 wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
@@ -302,28 +308,41 @@ wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
 
 https://ec.europa.eu/eurostat/databrowser/view/tps00027/default/table?lang=en
 
-```{r custom-kosovo}
-# kosovo <- read_xlsx("Kosovo_infmort_data_EC.xlsx", sheet = 3, skip = 8) %>% 
-#   filter(TIME == "Kosovo (under United Nations Security Council Resolution 1244/99)") %>% 
-#   select(-contains("...")) %>% 
-#   rename(year = "TIME") %>%
-#   mutate(`2013` = as.numeric(NA), 
-#          `2014` = as.numeric(NA)) %>% 
-#   gather(key = "year", value = "infmort_new") %>% 
-#   mutate(country_name = "Kosovo", 
-#          gwcode = 347, 
-#          infmort_new = as.numeric(infmort_new)) %>% 
-#   mutate(infmort_new = case_when(year == 2013 ~ 10.83333, TRUE ~ infmort_new), # There are 2 NAs -- 2013, 2014. I'm going to spread the difference between 2012 and 2015 ((9.7 - 11.4) / 3) + 11.4
-#           infmort_new = case_when(year == 2014 ~ 10.26666, TRUE ~ infmort_new)) ## ((9.7 - 11.4) / 3) + 10.83333 
-# write_csv(kosovo, "C:/Users/rickm/Dropbox/Closing Space/Data/infmort/kosovo_infmort.csv")
+Download as TSV. The years available change, so keep "part1" around and don't overwrite it.
 
-kosovo <- read_csv("input/kosovo_infmort.csv",
+```{r custom-kosovo}
+tps <- read_tsv("input/tps00027_page_tabular.tsv")
+# ugh, the first column uses comma's to mix the unit keys. fantastic.
+kos <- tps[grepl("XK", tps[[1]]), ]
+# wide to long...with base R
+kos <- reshape(kos, direction = "long", varying = list(2:ncol(kos)), 
+               v.names = "infmort_new", idvar = names(kos[1]), 
+               timevar = "year", times = as.integer(names(kos)[2:ncol(kos)]))
+names(kos)[1] <- "country_name"
+kos[[1]] <- "Kosovo"
+kos$gwcode <- 347L
+kos <- kos[, c("year", "infmort_new", "country_name", "gwcode")]
+kos$infmort_new[kos$infmort_new==":"] <- NA
+kos$infmort_new <- as.double(kos$infmort_new)
+write.csv(kos, "input/kosovo_infmort_part2.csv", row.names = FALSE)
+
+kos1 <- read_csv("input/kosovo_infmort_part1.csv",
                    col_types = cols(
   year = col_double(),
   infmort_new = col_double(),
   country_name = col_character(),
   gwcode = col_double()
 ))
+kos2 <- read_csv("input/kosovo_infmort_part2.csv",
+                   col_types = cols(
+  year = col_double(),
+  infmort_new = col_double(),
+  country_name = col_character(),
+  gwcode = col_double()
+))
+kos1 <- kos1[!kos1$year %in% kos2$year, ]
+kosovo <- rbind(kos1, kos2)
+
 # drop in values
 wdi <- left_join(wdi, kosovo, by = c("gwcode", "year")) %>%
   mutate(infmort = ifelse(is.na(infmort), infmort_new, infmort)) %>%
