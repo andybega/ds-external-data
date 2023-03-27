@@ -264,7 +264,7 @@ Visualize series:
 
 ```{r}
 wdi %>%
-  pivot_longer(-c(gwcode, year, country), names_to = "var") %>%
+  pivot_longer(-c(gwcode, year, country, iso3c), names_to = "var") %>%
   filter(!is.na(value)) %>%
   ggplot(., aes(x = year, y = value)) +
   facet_wrap(~ var, scales = "free_y", ncol = 1) +
@@ -397,6 +397,24 @@ knitr::kable(head(imp, 10), digits = 2)
 
 ```
 
+#### Manually fix South Sudan imputation
+
+```{r}
+check <- wdi2$IT.CEL.SETS.P2_imputed_values[wdi2$gwcode==626 & wdi2$year < 2001 & wdi2$year > 1990]
+if (any(check > 0.01)) {
+  idx <- wdi2$gwcode==626 & wdi2$year > 1989 & wdi2$year < 2011
+  fix <- wdi2[idx, c("IT.CEL.SETS.P2_imputed_values", "year")]
+  fix$IT.CEL.SETS.P2_imputed_values[2:(nrow(fix)-1)] <- NA_real_
+} else {
+  stop("Check whether SSD still needs a manual imputation adjustment (2023-03-24)")
+  # 2023-03-24: this year the imputation shows SSD having ~22 cell phone rates from
+  # 1990 onwards, which is absolutely crazy. Manually fixing this, but take this
+  # cell out if not needed anymore in the future.
+}
+```
+
+
+
 
 Check some of the high imputation series:
 
@@ -417,6 +435,7 @@ for (gw in check) {
 
 Not that great, but some of these series are just weird. 
 
+
 ```{r drop-in-cell}
 wdi <- wdi %>%
   mutate(IT.CEL.SETS.P2 = NULL) %>%
@@ -432,6 +451,8 @@ wdi <- wdi %>%
 wdi <- wdi %>%
   ungroup() %>%
   select(gwcode, year, everything())
+
+wdi$iso3c <- NULL
 
 # Keep a summary of the data so changes in the future are easier to track on 
 # git

@@ -1,7 +1,7 @@
 WDI: ICT
 ================
 
-*Last updated on: 23 February 2022*
+*Last updated on: 27 March 2023*
 
 Cell phone and internet broadband usage rates.
 
@@ -12,7 +12,7 @@ df <- read.csv("output/wdi-ict.csv")
 dplyr::glimpse(df)
 ```
 
-    ## Rows: 10,615
+    ## Rows: 10,789
     ## Columns: 7
     ## $ gwcode                 <int> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,…
     ## $ year                   <int> 1960, 1961, 1962, 1963, 1964, 1965, 1966, 1967,…
@@ -37,7 +37,7 @@ stats
     ## [1] 175
     ## 
     ## $Years
-    ## [1] "1960 - 2020"
+    ## [1] "1960 - 2021"
     ## 
     ## $N_columns
     ## [1] 7
@@ -46,10 +46,10 @@ stats
     ## [1] "gwcode, year, country, IT.NET.USER.ZS, IT.NET.USER.ZS_imputed, IT.CEL.SETS.P2, IT.CEL.SETS.P2_imputed"
     ## 
     ## $N_rows
-    ## [1] 10615
+    ## [1] 10789
     ## 
     ## $N_complete_rows
-    ## [1] 10615
+    ## [1] 10789
 
 ``` r
 ggplot(df[df$year > 1988, ], aes(x = year, y = IT.NET.USER.ZS, group = gwcode)) +

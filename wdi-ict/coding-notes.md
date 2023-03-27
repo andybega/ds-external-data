@@ -1,14 +1,14 @@
 WDI ICT (Internet and mobile use)
 ================
 
--   [Explore possible indicators](#explore-possible-indicators)
--   [Get raw data](#get-raw-data)
--   [Imputation](#imputation)
-    -   [Impute internet users](#impute-internet-users)
-    -   [Impute cell phone rates](#impute-cell-phone-rates)
--   [Done, save](#done-save)
+- [Explore possible indicators](#explore-possible-indicators)
+- [Get raw data](#get-raw-data)
+- [Imputation](#imputation)
+  - [Impute internet users](#impute-internet-users)
+  - [Impute cell phone rates](#impute-cell-phone-rates)
+- [Done, save](#done-save)
 
-*Last updated on: 23 February 2022*
+*Last updated on: 27 March 2023*
 
 ``` r
 suppressPackageStartupMessages({
@@ -229,13 +229,11 @@ if (!file.exists("input/ict.csv")) {
 raw <- read_csv("input/ict.csv")
 ```
 
-    ## Rows: 16226 Columns: 5
-
+    ## Rows: 16492 Columns: 6
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
-    ## chr (2): iso2c, country
+    ## chr (3): country, iso2c, iso3c
     ## dbl (3): year, IT.CEL.SETS.P2, IT.NET.USER.ZS
-
     ## 
     ## ℹ Use `spec()` to retrieve the full column specification for this data.
     ## ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
@@ -263,51 +261,51 @@ knitr::kable(nogwcode)
 
 | iso2c | country                        |   n |
 |:------|:-------------------------------|----:|
-| AG    | Antigua and Barbuda            |  61 |
-| AS    | American Samoa                 |  61 |
-| AW    | Aruba                          |  61 |
-| BM    | Bermuda                        |  61 |
-| CW    | Curacao                        |  61 |
-| DM    | Dominica                       |  61 |
-| FM    | Micronesia, Fed. Sts.          |  61 |
-| FO    | Faroe Islands                  |  61 |
-| GD    | Grenada                        |  61 |
-| GI    | Gibraltar                      |  61 |
-| GL    | Greenland                      |  61 |
-| GU    | Guam                           |  61 |
-| HK    | Hong Kong SAR, China           |  61 |
-| IM    | Isle of Man                    |  61 |
-| JG    | Channel Islands                |  61 |
-| KI    | Kiribati                       |  61 |
-| KN    | St. Kitts and Nevis            |  61 |
-| KY    | Cayman Islands                 |  61 |
-| LC    | St. Lucia                      |  61 |
-| LI    | Liechtenstein                  |  61 |
-| MC    | Monaco                         |  61 |
-| MF    | St. Martin (French part)       |  61 |
-| MH    | Marshall Islands               |  61 |
-| MO    | Macao SAR, China               |  61 |
-| MP    | Northern Mariana Islands       |  61 |
-| NC    | New Caledonia                  |  61 |
-| NR    | Nauru                          |  61 |
-| PF    | French Polynesia               |  61 |
-| PR    | Puerto Rico                    |  61 |
-| PS    | West Bank and Gaza             |  61 |
-| PW    | Palau                          |  61 |
-| SC    | Seychelles                     |  61 |
-| SM    | San Marino                     |  61 |
-| ST    | Sao Tome and Principe          |  61 |
-| SX    | Sint Maarten (Dutch part)      |  61 |
-| TC    | Turks and Caicos Islands       |  61 |
-| TO    | Tonga                          |  61 |
-| TV    | Tuvalu                         |  61 |
-| VC    | St. Vincent and the Grenadines |  61 |
-| VG    | British Virgin Islands         |  61 |
-| VI    | Virgin Islands (U.S.)          |  61 |
-| VU    | Vanuatu                        |  61 |
-| WS    | Samoa                          |  61 |
-| ZH    | Africa Eastern and Southern    |  61 |
-| ZI    | Africa Western and Central     |  61 |
+| AG    | Antigua and Barbuda            |  62 |
+| AS    | American Samoa                 |  62 |
+| AW    | Aruba                          |  62 |
+| BM    | Bermuda                        |  62 |
+| CW    | Curacao                        |  62 |
+| DM    | Dominica                       |  62 |
+| FM    | Micronesia, Fed. Sts.          |  62 |
+| FO    | Faroe Islands                  |  62 |
+| GD    | Grenada                        |  62 |
+| GI    | Gibraltar                      |  62 |
+| GL    | Greenland                      |  62 |
+| GU    | Guam                           |  62 |
+| HK    | Hong Kong SAR, China           |  62 |
+| IM    | Isle of Man                    |  62 |
+| JG    | Channel Islands                |  62 |
+| KI    | Kiribati                       |  62 |
+| KN    | St. Kitts and Nevis            |  62 |
+| KY    | Cayman Islands                 |  62 |
+| LC    | St. Lucia                      |  62 |
+| LI    | Liechtenstein                  |  62 |
+| MC    | Monaco                         |  62 |
+| MF    | St. Martin (French part)       |  62 |
+| MH    | Marshall Islands               |  62 |
+| MO    | Macao SAR, China               |  62 |
+| MP    | Northern Mariana Islands       |  62 |
+| NC    | New Caledonia                  |  62 |
+| NR    | Nauru                          |  62 |
+| PF    | French Polynesia               |  62 |
+| PR    | Puerto Rico                    |  62 |
+| PS    | West Bank and Gaza             |  62 |
+| PW    | Palau                          |  62 |
+| SC    | Seychelles                     |  62 |
+| SM    | San Marino                     |  62 |
+| ST    | Sao Tome and Principe          |  62 |
+| SX    | Sint Maarten (Dutch part)      |  62 |
+| TC    | Turks and Caicos Islands       |  62 |
+| TO    | Tonga                          |  62 |
+| TV    | Tuvalu                         |  62 |
+| VC    | St. Vincent and the Grenadines |  62 |
+| VG    | British Virgin Islands         |  62 |
+| VI    | Virgin Islands (U.S.)          |  62 |
+| VU    | Vanuatu                        |  62 |
+| WS    | Samoa                          |  62 |
+| ZH    | Africa Eastern and Southern    |  62 |
+| ZI    | Africa Western and Central     |  62 |
 
 ``` r
 # Take those out
@@ -320,7 +318,7 @@ Visualize series:
 
 ``` r
 wdi %>%
-  pivot_longer(-c(gwcode, year, country), names_to = "var") %>%
+  pivot_longer(-c(gwcode, year, country, iso3c), names_to = "var") %>%
   filter(!is.na(value)) %>%
   ggplot(., aes(x = year, y = value)) +
   facet_wrap(~ var, scales = "free_y", ncol = 1) +
@@ -330,10 +328,11 @@ wdi %>%
   geom_smooth(se = FALSE)
 ```
 
-    ## `geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+    ## `geom_smooth()` using method = 'gam' and formula = 'y ~ s(x, bs = "cs")'
 
-    ## Warning: It is deprecated to specify `guide = FALSE` to remove a guide. Please
-    ## use `guide = "none"` instead.
+    ## Warning: The `guide` argument in `scale_*()` cannot be `FALSE`. This was deprecated in
+    ## ggplot2 3.3.4.
+    ## ℹ Please use "none" instead.
 
 ![](coding-notes_files/figure-gfm/unnamed-chunk-2-1.png)<!-- -->
 
@@ -349,7 +348,7 @@ table(is.na(wdi$IT.NET.USER.ZS))
 
     ## 
     ## FALSE  TRUE 
-    ##  5076  5539
+    ##  5316  5473
 
 1.  Set values before 1990 to 0.
 2.  If the first non-zero value is 0.2 or below, set all preceding
@@ -394,16 +393,16 @@ knitr::kable(head(imp, 10), digits = 2)
 
 | gwcode | years | imputed | frac_imputed |
 |-------:|------:|--------:|-------------:|
-|    347 |    31 |      29 |         0.94 |
-|    626 |    31 |      26 |         0.84 |
+|    347 |    32 |      30 |         0.94 |
 |    345 |    17 |      14 |         0.82 |
-|    341 |    31 |      14 |         0.45 |
-|    500 |    31 |      13 |         0.42 |
-|    625 |    31 |      10 |         0.32 |
-|    700 |    31 |      10 |         0.32 |
-|    232 |    31 |       9 |         0.29 |
-|    775 |    31 |       9 |         0.29 |
-|    860 |    31 |       9 |         0.29 |
+|    626 |    32 |      24 |         0.75 |
+|    341 |    32 |      14 |         0.44 |
+|    620 |    32 |      10 |         0.31 |
+|    625 |    32 |      10 |         0.31 |
+|    731 |    32 |       9 |         0.28 |
+|    531 |    32 |       8 |         0.25 |
+|    645 |    32 |       7 |         0.22 |
+|    701 |    32 |       7 |         0.22 |
 
 Check some of the high imputation series:
 
@@ -444,7 +443,7 @@ table(is.na(wdi$IT.CEL.SETS.P2))
 
     ## 
     ## FALSE  TRUE 
-    ##  8197  2418
+    ##  8401  2388
 
 This is the first approach, which sets cell users before 1980 to 0, and
 then applied the logistic growth curve model to each individual series.
@@ -474,7 +473,7 @@ table(is.na(wdi2$IT.CEL.SETS.P2_imputed_values))
 
     ## 
     ## FALSE 
-    ## 10615
+    ## 10789
 
 ``` r
 missing <- wdi2 %>%
@@ -511,15 +510,31 @@ knitr::kable(head(imp, 10), digits = 2)
 | gwcode | years | imputed | frac_imputed |
 |-------:|------:|--------:|-------------:|
 |    345 |    17 |      14 |         0.82 |
-|    347 |    31 |      25 |         0.81 |
-|    626 |    31 |      21 |         0.68 |
-|    341 |    31 |      14 |         0.45 |
-|    860 |    31 |      12 |         0.39 |
-|    110 |    31 |       3 |         0.10 |
-|    436 |    31 |       3 |         0.10 |
-|    450 |    31 |       3 |         0.10 |
-|    451 |    31 |       3 |         0.10 |
-|    484 |    31 |       3 |         0.10 |
+|    347 |    32 |      26 |         0.81 |
+|    626 |    32 |      21 |         0.66 |
+|    341 |    32 |      14 |         0.44 |
+|    860 |    32 |      12 |         0.38 |
+|    490 |    32 |       4 |         0.12 |
+|    451 |    32 |       3 |         0.09 |
+|     31 |    32 |       2 |         0.06 |
+|    110 |    32 |       2 |         0.06 |
+|    436 |    32 |       2 |         0.06 |
+
+#### Manually fix South Sudan imputation
+
+``` r
+check <- wdi2$IT.CEL.SETS.P2_imputed_values[wdi2$gwcode==626 & wdi2$year < 2001 & wdi2$year > 1990]
+if (any(check > 0.01)) {
+  idx <- wdi2$gwcode==626 & wdi2$year > 1989 & wdi2$year < 2011
+  fix <- wdi2[idx, c("IT.CEL.SETS.P2_imputed_values", "year")]
+  fix$IT.CEL.SETS.P2_imputed_values[2:(nrow(fix)-1)] <- NA_real_
+} else {
+  stop("Check whether SSD still needs a manual imputation adjustment (2023-03-24)")
+  # 2023-03-24: this year the imputation shows SSD having ~22 cell phone rates from
+  # 1990 onwards, which is absolutely crazy. Manually fixing this, but take this
+  # cell out if not needed anymore in the future.
+}
+```
 
 Check some of the high imputation series:
 
@@ -556,6 +571,8 @@ wdi <- wdi %>%
 wdi <- wdi %>%
   ungroup() %>%
   select(gwcode, year, everything())
+
+wdi$iso3c <- NULL
 
 # Keep a summary of the data so changes in the future are easier to track on 
 # git
