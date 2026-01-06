@@ -1,7 +1,7 @@
 G&W states
 ================
 
-*Last updated on: 2023-03-24*
+*Last updated on: 2026-01-06*
 
 G&W states list, and derived indicators like state age.
 
@@ -10,8 +10,6 @@ library(states)
 library(yaml)
 library(lubridate)
 ```
-
-    ## Loading required package: timechange
 
     ## 
     ## Attaching package: 'lubridate'
@@ -44,7 +42,7 @@ to_year <- year(Sys.Date()) - 1
 to_year
 ```
 
-    ## [1] 2022
+    ## [1] 2025
 
 ``` r
 out <- state_panel(lubridate::year(min(gwstates$start)), to_year, 
@@ -60,6 +58,15 @@ gwstates$end[gwstates$end==max(gwstates$end)] <- as.Date(sprintf("%s-12-31", to_
 gw_cy <- full_join(out, gwstates, by = c("gwcode")) %>%
   dplyr::filter(year >= lubridate::year(start) &
                   year <= lubridate::year(end)) 
+```
+
+    ## Warning in full_join(out, gwstates, by = c("gwcode")): Detected an unexpected many-to-many relationship between `x` and `y`.
+    ## ℹ Row 547 of `x` matches multiple rows in `y`.
+    ## ℹ Row 1 of `y` matches multiple rows in `x`.
+    ## ℹ If a many-to-many relationship is expected, set `relationship =
+    ##   "many-to-many"` to silence this warning.
+
+``` r
 stopifnot(all(duplicated(gw_cy[, c("gwcode", "year")])==FALSE))
 
 gw_cy$state_age <- gw_cy$year - lubridate::year(gw_cy$start) + 1
