@@ -1,7 +1,7 @@
 P&T Coups
 ================
 
-*Last updated on 2023-03-24*
+*Last updated on 2026-01-06*
 
 Coup data-derived indicators for 1950 to the present.
 
@@ -19,7 +19,7 @@ suppressPackageStartupMessages({
 coups <- read_csv("output/ptcoups.csv")
 ```
 
-    ## Rows: 11793 Columns: 20
+    ## Rows: 12384 Columns: 20
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (20): gwcode, year, pt_attempt, pt_attempt_num, pt_coup_num, pt_coup, pt...
@@ -33,7 +33,7 @@ attr(coups, "spec") <- NULL
 glimpse(coups)
 ```
 
-    ## Rows: 11,793
+    ## Rows: 12,384
     ## Columns: 20
     ## $ gwcode                      <dbl> 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, …
     ## $ year                        <dbl> 1950, 1951, 1952, 1953, 1954, 1955, 1956, …
@@ -60,7 +60,7 @@ glimpse(coups)
 range(coups$year)
 ```
 
-    ## [1] 1950 2022
+    ## [1] 1950 2025
 
 ``` r
 plot_missing(coups, colnames(coups)[3:10], "gwcode", "year", "year", "GW") +

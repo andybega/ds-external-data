@@ -1,7 +1,7 @@
 P&T Coups
 ================
 
-*Last updated on 2023-03-24*
+*Last updated on 2026-01-06*
 
 ## Update raw coup data
 
