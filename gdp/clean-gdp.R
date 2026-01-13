@@ -6,18 +6,18 @@
 #'   github_document
 #' ---
 
-#' This file is generated from clean-gdp.R. To spint/knit/compile the .md file, 
-#' run:  
+#' This file is generated from clean-gdp.R. To spint/knit/compile the .md file,
+#' run:
 #' `setwd("gdp"); rmarkdown::render("clean-gdp.R")`
 #'
 #'
 #' For updating the data, all items requiring attention are marked with "UPDATE:".
-#' 
-#' UPDATE: This script uses `population.csv` as an input for calculating GDP per capita. Drop in an updated version from `population/` if needed. 
-#' 
+#'
+#' UPDATE: This script uses `population.csv` as an input for calculating GDP per capita. Drop in an updated version from `population/` if needed.
+#'
 #' The WDI GDP data, cached in the input folder, also need to be updated. Delete `input/wdigdp.csv` for that to happen automatically (or see the UPDATE: below).
-#' 
-#' The other inputs (KSG and UN GDP) only concern historical data so they should not need to be updated. 
+#'
+#' The other inputs (KSG and UN GDP) only concern historical data so they should not need to be updated.
 
 suppressPackageStartupMessages({
   library(tidyverse)
@@ -134,14 +134,14 @@ load_inputs <- function() {
   suppressMessages({
     check_mtime("input/wdigdp.csv")
     wdigdp <- read.csv("input/wdigdp.csv")[, c("iso2c", "country", "year", "NY.GDP.MKTP.KD")]
-    
+
     ksggdp <- read_delim("input/expgdpv6.0/gdpv6.txt", delim = "\t") %>%
       rename(gwcode = statenum) %>%
       select(-stateid)
 
     ungdp <- read_csv("input/UNgdpData.csv") %>%
       select(country_name, country_id, year, gdp_2010USD)
-    
+
     check_mtime("input/population.csv")
     pop <- read_csv("input/population.csv")
   })
@@ -172,7 +172,7 @@ gdp_get_yearly <- function(impute, inputs = load_inputs()) {
     wdigdp <- wdigdp %>%
       filter(!year %in% dropyear)
   }
-  
+
   # add standard country codes
   wdi <- gdp_wdi_add_gwcode(wdigdp)
   ungdp <- gdp_un_add_gwcode(ungdp)
@@ -196,7 +196,7 @@ gdp_get_yearly <- function(impute, inputs = load_inputs()) {
   joint <- joint %>%
     mutate(NY.GDP.MKTP.KD = case_when(
       # special treatment for Qatar 1971, where otherwise a big jump occurs
-      gwcode==694 & year==1971 ~ filter(joint, gwcode==694) %>% 
+      gwcode==694 & year==1971 ~ filter(joint, gwcode==694) %>%
         pull(un_gdp.rescaled) %>% rev() %>% imputeTS::na_kalman() %>% tail(1),
       is.na(NY.GDP.MKTP.KD) & !is.na(un_gdp.rescaled) ~ un_gdp.rescaled,
       is.na(NY.GDP.MKTP.KD) & !is.na(ksg_gdp.rescaled) ~ ksg_gdp.rescaled,
@@ -210,7 +210,7 @@ gdp_get_yearly <- function(impute, inputs = load_inputs()) {
     arrange(gwcode, year) %>%
     group_by(gwcode) %>%
     mutate(
-      NY.GDP.MKTP.KD.ZG = (NY.GDP.MKTP.KD - lag(NY.GDP.MKTP.KD)) / 
+      NY.GDP.MKTP.KD.ZG = (NY.GDP.MKTP.KD - lag(NY.GDP.MKTP.KD)) /
         lag(NY.GDP.MKTP.KD) * 100) %>%
     ungroup()
 
@@ -268,9 +268,9 @@ gdp_get_yearly <- function(impute, inputs = load_inputs()) {
 # Load/clean inputs -------------------------------------------------------
 
 #' ## WDI GDP data
-#' 
+#'
 #' Relevant WDI indicators:
-#' 
+#'
 #' - "NY.GDP.PCAP.PP.KD.ZG"
 #' - "NY.GDP.PCAP.PP.KD"
 #' - "NY.GDP.PCAP.KD.ZG"
@@ -281,44 +281,43 @@ gdp_get_yearly <- function(impute, inputs = load_inputs()) {
 #' - "NY.GDP.MKTP.KD.ZG": GDP growth
 #' - "SP.POP.TOTL"
 #'
-#' UPDATE: delete `input/wdigdp.csv` and run the chunk below to re-download and 
-#' cache the latest WDI GDP data. 
+#' UPDATE: delete `input/wdigdp.csv` and run the chunk below to re-download and
+#' cache the latest WDI GDP data.
 
 
 if (!file.exists("input/wdigdp.csv")) {
   # UPDATE: end year
-  wdi1 <- WDI(country = "all", start = 1960, end = 2023,
+  wdi1 <- WDI(country = "all", start = 1960, end = 2025,
               indicator = c("NY.GDP.MKTP.PP.KD"))
-  wdi2 <- WDI(country = "all", start = 1960, end = 2023,
+  wdi2 <- WDI(country = "all", start = 1960, end = 2025,
               indicator = c("NY.GDP.MKTP.PP.CD"))
-  wdi3 <- WDI(country = "all", start = 1960, end = 2023,
+  wdi3 <- WDI(country = "all", start = 1960, end = 2025,
               indicator = c("NY.GDP.MKTP.KD"))
   wdigdp <- Reduce(left_join, list(wdi1, wdi2, wdi3))
   write.csv(wdigdp, file = "input/wdigdp.csv", row.names = FALSE)
+} else {
+  wdigdp <- read.csv("input/wdigdp.csv")
 }
-
-wdigdp <- read.csv("input/wdigdp.csv")
-
 
 
 
 wdi <- gdp_wdi_add_gwcode(wdigdp)
 
-plot_missing(wdi, "NY.GDP.MKTP.KD", "gwcode", time = "year", 
+plot_missing(wdi, "NY.GDP.MKTP.KD", "gwcode", time = "year",
              statelist = "GW") +
   ggtitle("NY.GDP.MKTP.KD")
-plot_missing(wdi, "NY.GDP.MKTP.PP.KD", "gwcode",  time =  "year", 
+plot_missing(wdi, "NY.GDP.MKTP.PP.KD", "gwcode",  time =  "year",
              statelist = "GW") +
   ggtitle("NY.GDP.MKTP.PP.KD")
-plot_missing(wdi, "NY.GDP.MKTP.PP.CD", "gwcode",  time =  "year", 
+plot_missing(wdi, "NY.GDP.MKTP.PP.CD", "gwcode",  time =  "year",
              statelist = "GW") +
   ggtitle("NY.GDP.MKTP.PP.CD")
 
 
 
-#' 
+#'
 #' ## KSG expanded GDP
-#' 
+#'
 
 ksggdp <- read_delim("input/expgdpv6.0/gdpv6.txt", delim = "\t") %>%
   rename(gwcode = statenum) %>%
@@ -327,30 +326,30 @@ ksggdp <- read_delim("input/expgdpv6.0/gdpv6.txt", delim = "\t") %>%
 plot_missing(ksggdp, "realgdp", "gwcode", time = "year", statelist = "GW")
 
 
-#' 
+#'
 #' ## UN GDP data
-#' 
+#'
 
 ungdp <- read_csv("input/UNgdpData.csv") %>%
-  select(country_name, country_id, year, gdp_2010USD) 
+  select(country_name, country_id, year, gdp_2010USD)
 
-ungdp <- gdp_un_add_gwcode(ungdp)  
+ungdp <- gdp_un_add_gwcode(ungdp)
 plot_missing(ungdp, "gdp_2010USD", "gwcode", time = "year", statelist = "GW")
 
 
 # Combine data ------------------------------------------------------------
 
-#' 
+#'
 #' ## Combine data
-#' 
+#'
 
 joint <- wdi %>%
   select(-iso3c) %>%
   full_join(., ksggdp, by = c("gwcode", "year")) %>%
   select(-pop, -rgdppc, -cgdppc) %>%
   mutate(realgdp = realgdp*1e6) %>%
-  full_join(., ungdp, by = c("gwcode", "year")) 
-  
+  full_join(., ungdp, by = c("gwcode", "year"))
+
 
 # Example countries to look at below
 countries <- unique(c(
@@ -370,7 +369,7 @@ cor(joint$gdp_2010USD, joint$NY.GDP.MKTP.KD, use = "complete.obs")
 plot(log10(joint$gdp_2010USD), log10(joint$NY.GDP.MKTP.KD))
 
 
-#' Does it add any non-missing values? Yes, about 800 or so. 
+#' Does it add any non-missing values? Yes
 
 
 # does it add any non-missing values?
@@ -385,7 +384,7 @@ joint %>%
 
 
 # which countries?
-adds <- joint %>% 
+adds <- joint %>%
   filter(is.na(NY.GDP.MKTP.KD) & !is.na(gdp_2010USD)) %>%
   group_by(gwcode) %>%
   summarize(adds = n())
@@ -396,7 +395,7 @@ head(arrange(adds, desc(adds)))
 
 # look at some examples of those
 set.seed(1343)
-countries2 <- unique(c(c(290, 345), 
+countries2 <- unique(c(c(290, 345),
                        sample(adds$gwcode, 8)))
 
 mdl <- lm(NY.GDP.MKTP.KD ~ -1 + gdp_2010USD, data = joint)
@@ -416,10 +415,10 @@ joint %>%
   facet_wrap(~ gwcode, scales = "free_y")
 
 
-#' Rescaled UN GDP matches WDI very well, it seems. Adjusted R^2 is basically 1 and so is the coefficient. 
-#' 
+#' Rescaled UN GDP matches WDI very well, it seems. Adjusted R^2 is basically 1 and so is the coefficient.
+#'
 #' ### Overlap between KSG expanded and WDI
-#' 
+#'
 
 sum(complete.cases(joint[, c("realgdp", "NY.GDP.MKTP.PP.KD")]))
 cor(joint$realgdp, joint$NY.GDP.MKTP.PP.KD, use = "complete.obs")
@@ -444,7 +443,7 @@ plot(log10(joint$realgdp), log10(joint$NY.GDP.MKTP.KD))
 plot(log10(joint$realgdp.rescaled), log10(joint$NY.GDP.MKTP.KD))
 
 
-#' Try log model, also doesn't work super well. 
+#' Try log model, also doesn't work super well.
 
 mdl <- lm(log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp), data = joint)
 summary(mdl)
@@ -467,7 +466,6 @@ abline(a = 0, b = 1)
 
 
 # try country-varying scaling factors; this works fairly well
-library("lme4")
 mdl <- lmer(log(NY.GDP.MKTP.KD) ~ -1 + log(realgdp) + (log(realgdp)|gwcode), data = joint)
 joint <- joint %>%
   mutate(realgdp.rescaled3 = exp(predict(mdl, newdata = joint, allow.new.levels = TRUE)))
@@ -509,15 +507,15 @@ joint %>%
 
 
 #' This works well, but cannot predict when either KSG or UN is missing, so not useful in practice for filling in WDI gaps.
-#' 
+#'
 #' ### Conclusion
 #'
 #' Four step imputation procedure:
-#' 
+#'
 #' 1. Acquire the WDI data
 #' 2. Where WDI is missing, drop in UN GDP figures, scaled by a linear model.
 #' 3. Where WDI is missing, drop in KSG figures, scaled by a log-linear country-varying scaling model.
-#' 4. Model-based extrapolation: use Kalman-smoothing to forward extrapolate missing GDP values (most notably Taiwan and several countries missing current year GDP values) and backward extrapolate GDP growth in first year of existences of a country.  
+#' 4. Model-based extrapolation: use Kalman-smoothing to forward extrapolate missing GDP values (most notably Taiwan and several countries missing current year GDP values) and backward extrapolate GDP growth in first year of existences of a country.
 #'
 #' Check leftover missing values before impute:
 
@@ -525,9 +523,9 @@ joint %>%
 joint <- gdp_get_yearly(impute = FALSE)
 
 plot_missing(joint, "NY.GDP.MKTP.KD", "gwcode", time = "year", statelist = "GW")
-  
-still_missing <- joint %>% 
-  filter(is.na(NY.GDP.MKTP.KD)) %>% 
+
+still_missing <- joint %>%
+  filter(is.na(NY.GDP.MKTP.KD)) %>%
   group_by(gwcode) %>%
   summarize(n = n(),
             years = paste0(range(year), collapse = " - ")) %>%
@@ -535,7 +533,7 @@ still_missing <- joint %>%
 still_missing
 
 
-#' Use Kalman smoothing to extrapolate the leftover trailing missing values, and backwards extrapolate first year missing GDP growth. 
+#' Use Kalman smoothing to extrapolate the leftover trailing missing values, and backwards extrapolate first year missing GDP growth.
 
 
 joint <- gdp_get_yearly(impute = TRUE)
@@ -547,9 +545,9 @@ plot_missing(joint, "NY.GDP.MKTP.KD", "gwcode", time = "year", statelist = "GW")
 #'
 #' This uses "population.csv" from the population module.
 #'
-#' At least one of the combined GDP values--Qatar in 1971--is clunky in that 
-#' there is a big discrepancy. This gives Qatar 1971 an inordinarily high GDP 
-#' per capita value. Solved by backward imputing GDP instead of taking KSG value. 
+#' At least one of the combined GDP values--Qatar in 1971--is clunky in that
+#' there is a big discrepancy. This gives Qatar 1971 an inordinarily high GDP
+#' per capita value. Solved by backward imputing GDP instead of taking KSG value.
 
 
 check <- joint[joint$gwcode==694, ]
@@ -569,7 +567,7 @@ for (vn in setdiff(names(check), c("gwcode", "year"))) {
 #' ## Done, record summary stats and save
 #'
 
-# Keep a summary of the data so changes in the future are easier to track on 
+# Keep a summary of the data so changes in the future are easier to track on
 # git
 df <- joint
 stats <- list(
