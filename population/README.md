@@ -1,7 +1,7 @@
 Multi-source population data
 ================
 
-*Last updated on: 2023-03-23*
+*Last updated on: 2026-01-13*
 
 Complete G&W coverage population data for 1816 onwards. Preferentially
 from UN data for post-1949 data, with drop-ins from WDI and KSG; for
@@ -17,7 +17,7 @@ library("states")
 pop <- read_csv("output/population.csv")
 ```
 
-    ## Rows: 20258 Columns: 3
+    ## Rows: 20849 Columns: 3
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## dbl (3): gwcode, year, pop
@@ -29,16 +29,16 @@ pop <- read_csv("output/population.csv")
 range(pop$year)
 ```
 
-    ## [1] 1816 2022
+    ## [1] 1816 2025
 
 ``` r
 str(pop)
 ```
 
-    ## spc_tbl_ [20,258 × 3] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
-    ##  $ gwcode: num [1:20258] 2 2 2 2 2 2 2 2 2 2 ...
-    ##  $ year  : num [1:20258] 1816 1817 1818 1819 1820 ...
-    ##  $ pop   : num [1:20258] 8659 8899 9139 9379 9618 ...
+    ## spc_tbl_ [20,849 × 3] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+    ##  $ gwcode: num [1:20849] 2 2 2 2 2 2 2 2 2 2 ...
+    ##  $ year  : num [1:20849] 1816 1817 1818 1819 1820 ...
+    ##  $ pop   : num [1:20849] 8659 8899 9139 9379 9618 ...
     ##  - attr(*, "spec")=
     ##   .. cols(
     ##   ..   gwcode = col_double(),
@@ -75,7 +75,8 @@ pop %>%
   theme_minimal()
 ```
 
-    ## Warning: Removed 32 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 38 rows containing missing values or values outside the scale range
+    ## (`geom_line()`).
 
 ![](README_files/figure-gfm/unnamed-chunk-1-2.png)<!-- -->
 
@@ -94,6 +95,6 @@ still_missing
     ## # A tibble: 3 × 4
     ##   gwcode country_name  year            n
     ##    <dbl> <chr>         <chr>       <int>
-    ## 1    396 Abkhazia      2008 - 2022    15
-    ## 2    397 South Ossetia 2008 - 2022    15
+    ## 1    396 Abkhazia      2008 - 2025    18
+    ## 2    397 South Ossetia 2008 - 2025    18
     ## 3    511 Zanzibar      1963 - 1964     2

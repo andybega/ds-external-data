@@ -2,7 +2,7 @@ Population
 ================
 Author: Andreas Beger
 
-Last updated on: 23 March 2023
+Last updated on: 13 January 2026
 
 - [Acquire/update raw data](#acquireupdate-raw-data)
   - [Expanded population data from
@@ -19,7 +19,6 @@ Last updated on: 23 March 2023
   - [Germany](#germany)
   - [Vietnam](#vietnam)
   - [Yemen](#yemen)
-  - [Kosovo](#kosovo)
   - [Tibet](#tibet)
   - [Czechoslovakia](#czechoslovakia)
 - [Get ready to write final data](#get-ready-to-write-final-data)
@@ -28,7 +27,7 @@ Last updated on: 23 March 2023
   - [Missingness](#missingness)
 
 NOTE: This file is generated from README.R. To spint/knit/compile the
-.md file, run:  
+.md file, run:
 `setwd("population"); rmarkdown::render("clean-population.R")`
 
 This file combines UN, WDI, and KSG population data to create a complete
@@ -59,7 +58,9 @@ To update the data:
 
 ``` r
 suppressPackageStartupMessages({
+  library(countrycode)
   library(dplyr)
+  library(readr)
   library(states)
   library(WDI)
   library(lubridate)
@@ -68,6 +69,8 @@ suppressPackageStartupMessages({
   library(imputeTS)
   library(here)
   library(purrr)
+  library(tidyr)
+  library(ggplot2)
 })
 
 oldwd <- getwd()
@@ -80,7 +83,7 @@ wdi_add_gwcode <- function(x) {
   starty <- min(x$year)
   endy <- max(x$year)
   cy <- states::state_panel(starty, endy, useGW = TRUE, partial = "any")
-  
+
   x <- x %>%
     mutate(gwcode = suppressWarnings(countrycode::countrycode(x$iso2c, "iso2c", "cown")),
            gwcode = as.integer(gwcode)) %>%
@@ -88,20 +91,20 @@ wdi_add_gwcode <- function(x) {
       iso2c=="RS" ~ 340L,
       iso2c=="XK" ~ 347L,
       iso2c=="VN" ~ 816L,
-      
+
       gwcode==255 ~ 260L,
       gwcode==679 ~ 678L,
-      
+
       gwcode==970 ~ 971L,
       gwcode==946 ~ 970L,
       gwcode==947 ~ 973L,
       gwcode==955 ~ 972L,
       TRUE ~ gwcode
     ))
-  
+
   # fix Czechoslovakia
   x$gwcode[x$gwcode==316 & x$year <= 1992] <- 315L
-  
+
   # drop countries that unify
   x <- x %>%
     # pre-95 Serbia
@@ -109,18 +112,18 @@ wdi_add_gwcode <- function(x) {
     filter(!(gwcode==260 & year < 1990)) %>%
     filter(!(gwcode==678 & year < 1990)) %>%
     # pre-75 Vietnam
-    filter(!(gwcode==816 & year < 1975)) 
-  
+    filter(!(gwcode==816 & year < 1975))
+
   x <- dplyr::select(x, -iso2c, -country)
   x <- x %>% filter(!is.na(gwcode))
-  
+
   cy <- dplyr::left_join(cy, x, by = c("gwcode", "year"))
   cy
 }
 
 data(gwstates)
 cnames <- gwstates %>%
-  group_by(gwcode) %>% 
+  group_by(gwcode) %>%
   slice(n()) %>%
   select(gwcode, country_name) %>%
   ungroup()
@@ -145,7 +148,7 @@ ksg <- read_tsv("input/exppop.tsv")
 ```
 
     ## Rows: 16729 Columns: 5
-    ## ── Column specification ────────────────────────────────────────────────────────────────
+    ## ── Column specification ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
     ## Delimiter: "\t"
     ## chr (1): idacr
     ## dbl (4): idnum, year, pop, source
@@ -162,7 +165,7 @@ plot_missing(ksg, x = "pop", ccode = "idnum", time = "year", statelist = "GW")
 ![](clean-population_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
 
 ``` r
-# These data only go to 2004. Need to splice in updates. 
+# These data only go to 2004. Need to splice in updates.
 ```
 
 ### WDI pop data
@@ -172,8 +175,8 @@ Via the WB API thanks to WDI package.
 ``` r
 # UPDATE: delete input/wdipop.csv to re-download
 if (!file.exists("input/wdipop.csv")) {
-  wdi_raw <- WDI(country = "all", indicator = "SP.POP.TOTL", 
-               start = 1960, end = year(Sys.Date()), extra = FALSE) 
+  wdi_raw <- WDI(country = "all", indicator = "SP.POP.TOTL",
+               start = 1960, end = year(Sys.Date()), extra = FALSE)
   write.csv(wdi_raw, "input/wdipop.csv", row.names = FALSE)
 }
 
@@ -199,7 +202,7 @@ plot_missing(wdi, x = "pop", ccode = "gwcode", time = "year", statelist = "GW")
 files <- dir("input", pattern = "^UNPop", full.names = TRUE)
 
 # 2023-03: the data portal at the UN website has changed, giving different
-# output format now as well. So make separate parser functions. 
+# output format now as well. So make separate parser functions.
 parse_un_wide <- function(x) {
   # data are iso, location, ..., year1, year2, ...
   df <- readxl::read_xlsx(x, sheet = "Data", skip = 1)
@@ -213,40 +216,94 @@ parse_un_wide <- function(x) {
 }
 parse_un_long <- function(x) {
   # data are iso, location, year, indicator
-  df <- readxl::read_xlsx(x, sheet = "Data", skip = 5, 
+  df <- readxl::read_xlsx(x, sheet = "Data", skip = 5,
                           col_names = c("iso3n", "Location", "year", "pop"))
   df$year <- as.integer(df$year)
   df
 }
-parse_un <- function(file) {
-  x <- readxl::read_xlsx(file, sheet = "Data", range = "A1")
-  if (length(x)==0) {
-    out <- parse_un_long(file)
-  } else if (names(x)=="Total Population by sex (thousands)") {
-    out <- parse_un_wide(file)
+parse_un_wide_2026 <- function(x) {
+  # compared to the UN format in previous years, this only has ISO character
+  # codes, not numberic ones. And the codes are in a separate sheet, the data
+  # sheet only has country names
+  #
+  # Converting these to numberic codes because
+  #
+  # the data has country names, but not the iso codes
+  df <- readxl::read_xlsx(x, sheet = "Data", skip = 1)
+
+  if (df$...1[[1]] != "Afghanistan") {
+    stop("Doesn't look like the first column has country names, adjust the index below")
   } else {
-    stop("unexpected input")
+    df <- df |> rename(Location = `...1`)
+    df <- df |> select(-c(`...2`, `...3`, `...4`, `...5`))
   }
-  out
+
+  # read sheet mapping names to iso
+  iso_map <- readxl::read_xlsx(x, sheet = "Locations") |>
+    select(`Location Name`, `ISO 3`) |>
+    setNames(c("Location", "iso3c")) |>
+    mutate(iso3n = countrycode::countrycode(iso3c, "iso3c", "iso3n", warn=FALSE),
+           # Kosovo is in the data but doesn't have a ISO code, use a temp one
+           iso3n = ifelse(str_detect(Location, "Kosovo"), 1000, iso3n)) |>
+    select(-iso3c)
+
+  df <- left_join(df, iso_map, by = "Location")
+
+  df <- tidyr::pivot_longer(df, -c(iso3n, Location), names_to = "year", values_to = "pop")
+  df$year <- as.integer(df$year)
+  df$iso3n <- as.character(df$iso3n)
+  df
 }
 
-# This is the UN pop data for countries, taking out the region aggregations
-un_raw <- files %>%
-  # read in data
-  map(., parse_un) %>%
-  purrr::reduce(rbind) 
 
-# UPDATE: drop the last year of data; i just didn't want to export a file with a 
-# single year
-drop_year <- 2023
-un_raw <- un_raw[!un_raw$year==drop_year, ] 
+#un_1950_1984 <- parse_un_wide(files[2])
+#un_1985_2019 <- parse_un_wide(files[4])
+un_1950_1984 <- parse_un_wide_2026(files[1])
+```
+
+    ## New names:
+    ## • `` -> `...1`
+    ## • `` -> `...2`
+    ## • `` -> `...3`
+    ## • `` -> `...4`
+    ## • `` -> `...5`
+
+``` r
+un_1985_2019 <- parse_un_wide_2026(files[3])
+```
+
+    ## New names:
+    ## • `` -> `...1`
+    ## • `` -> `...2`
+    ## • `` -> `...3`
+    ## • `` -> `...4`
+    ## • `` -> `...5`
+
+``` r
+un_2020_now <- parse_un_wide_2026(files[5])
+```
+
+    ## New names:
+    ## • `` -> `...1`
+    ## • `` -> `...2`
+    ## • `` -> `...3`
+    ## • `` -> `...4`
+    ## • `` -> `...5`
+
+``` r
+# This is the UN pop data for countries, taking out the region aggregations
+un_raw <- rbind(un_1950_1984,
+                un_1985_2019,
+                un_2020_now)
 
 # Add GW codes
 un <- un_raw %>%
-  mutate(gwcode = countrycode::countrycode(iso3n, "iso3n", "cown", warn = FALSE),
+  mutate(iso3n = as.integer(iso3n),
+         gwcode = countrycode::countrycode(iso3n, "iso3n", "cown", warn = FALSE),
          gwcode = as.integer(gwcode)) %>%
   mutate(gwcode = case_when(
-      Location=="Serbia" ~ 340L, 
+      Location=="Serbia" ~ 340L,
+      iso3n==1000 ~ 347L, # Kosovo
       gwcode==255 ~ 260L,
       gwcode==679 ~ 678L,
       gwcode==970 ~ 971L,
@@ -255,7 +312,7 @@ un <- un_raw %>%
       gwcode==955 ~ 972L,
       gwcode==817 ~ 816L,
       TRUE ~ gwcode
-  )) 
+  ))
 
 un <- un %>%
   filter(!is.na(gwcode))
@@ -271,9 +328,9 @@ Czechia and Slovakia split on 1 January 1993.
 
 ``` r
 add <- tibble(
-  gwcode = 315, 
+  gwcode = 315,
   year = 1950:1992,
-  pop = rowSums(cbind(un$pop[un$gwcode==316 & un$year < 1993], 
+  pop = rowSums(cbind(un$pop[un$gwcode==316 & un$year < 1993],
                          un$pop[un$gwcode==317 & un$year < 1993]))
 )
 un <- bind_rows(un, add) %>%
@@ -286,7 +343,7 @@ un <- bind_rows(un, add) %>%
 Before East Pakistan became Bangladesh.
 
 ``` r
-pak70 <- rowSums(cbind(un$pop[un$gwcode==770 & un$year < 1970], 
+pak70 <- rowSums(cbind(un$pop[un$gwcode==770 & un$year < 1970],
                        un$pop[un$gwcode==771 & un$year < 1970]))
 un$pop[un$gwcode==770 & un$year < 1970] <- pak70
 ```
@@ -328,7 +385,7 @@ un <- un %>%
          !(gwcode==344 & year < 1992),
          !(gwcode==346 & year < 1992),
          !(gwcode==349 & year < 1992)) %>%
-  bind_rows(., yugo) 
+  bind_rows(., yugo)
 ```
 
 ##### USSR/Russia
@@ -360,7 +417,7 @@ ussr <- tibble(
   ))
 )
 
-un <- un %>% 
+un <- un %>%
   filter(
     !(gwcode==365 & year < 1991),
     !(gwcode==366 & year < 1991),
@@ -385,7 +442,7 @@ un <- un %>%
 South Sudan independent on . So use combined for 2011 and before.
 
 ``` r
-sud <- rowSums(cbind(un$pop[un$gwcode==625 & un$year <= 2011], 
+sud <- rowSums(cbind(un$pop[un$gwcode==625 & un$year <= 2011],
                      un$pop[un$gwcode==626 & un$year <= 2011]))
 un$pop[un$gwcode==625 & un$year <= 2011] <- sud
 ```
@@ -396,7 +453,7 @@ East Timor gained independence in 2002, so use combined for 2001 and
 before.
 
 ``` r
-ind <- rowSums(cbind(un$pop[un$gwcode==850 & un$year <= 2001], 
+ind <- rowSums(cbind(un$pop[un$gwcode==850 & un$year <= 2001],
                      un$pop[un$gwcode==860 & un$year <= 2001]))
 un$pop[un$gwcode==850 & un$year <= 2001] <- ind
 ```
@@ -414,7 +471,8 @@ Other discrepancies in the data:
 
 ``` r
 # UPDATE: end_year
-end_year <- 2022
+end_year <- 2025
+
 gw <- state_panel(1950, end_year, partial = "any")
 gw_not_in_un <- gw %>%
   anti_join(un, by = c("gwcode", "year")) %>%
@@ -423,146 +481,22 @@ gw_not_in_un <- gw %>%
   group_by(gwcode, seq) %>%
   summarize(years = paste0(range(year), collapse = " - "),
             .groups = "drop") %>%
-  left_join(cnames, by = "gwcode") 
+  left_join(cnames, by = "gwcode")
 gw_not_in_un %>%
-  knitr::kable(caption = "GW CYs not in UN") 
+  knitr::kable(caption = "GW CYs not in UN")
 ```
 
-<table>
-<caption>
+| gwcode | seq | years       | country_name                |
+|-------:|----:|:------------|:----------------------------|
+|    265 |   1 | 1950 - 1990 | German Democratic Republic  |
+|    396 |   1 | 2008 - 2025 | Abkhazia                    |
+|    397 |   1 | 2008 - 2025 | South Ossetia               |
+|    511 |   1 | 1963 - 1964 | Zanzibar                    |
+|    680 |   1 | 1967 - 1990 | Yemen, People’s Republic of |
+|    711 |   1 | 1950 - 1950 | Tibet                       |
+|    817 |   1 | 1954 - 1975 | Vietnam, Republic of        |
+
 GW CYs not in UN
-</caption>
-<thead>
-<tr>
-<th style="text-align:right;">
-gwcode
-</th>
-<th style="text-align:right;">
-seq
-</th>
-<th style="text-align:left;">
-years
-</th>
-<th style="text-align:left;">
-country_name
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:right;">
-265
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1990
-</td>
-<td style="text-align:left;">
-German Democratic Republic
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-347
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-2008 - 2022
-</td>
-<td style="text-align:left;">
-Kosovo
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-396
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-2008 - 2022
-</td>
-<td style="text-align:left;">
-Abkhazia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-397
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-2008 - 2022
-</td>
-<td style="text-align:left;">
-South Ossetia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-511
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1963 - 1964
-</td>
-<td style="text-align:left;">
-Zanzibar
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-680
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1967 - 1990
-</td>
-<td style="text-align:left;">
-Yemen, People’s Republic of
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-711
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1950
-</td>
-<td style="text-align:left;">
-Tibet
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-817
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1954 - 1975
-</td>
-<td style="text-align:left;">
-Vietnam, Republic of
-</td>
-</tr>
-</tbody>
-</table>
 
 ``` r
 un_not_in_gw <- un %>%
@@ -572,1322 +506,107 @@ un_not_in_gw <- un %>%
   group_by(gwcode, seq) %>%
   summarize(years = paste0(range(year), collapse = " - "),
             .groups = "drop") %>%
-  left_join(cnames, by = "gwcode") 
+  left_join(cnames, by = "gwcode")
 un_not_in_gw %>%
   knitr::kable(caption = "UN CYs not in GW")
 ```
 
-<table>
-<caption>
+| gwcode | seq | years       | country_name                          |
+|-------:|----:|:------------|:--------------------------------------|
+|     31 |   1 | 1950 - 1972 | Bahamas                               |
+|     51 |   1 | 1950 - 1961 | Jamaica                               |
+|     52 |   1 | 1950 - 1961 | Trinidad and Tobago                   |
+|     53 |   1 | 1950 - 1965 | Barbados                              |
+|     54 |   1 | 1950 - 1977 | Dominica                              |
+|     55 |   1 | 1950 - 1973 | Grenada                               |
+|     56 |   1 | 1950 - 1978 | Saint Lucia                           |
+|     57 |   1 | 1950 - 1978 | Saint Vincent and the Grenadines      |
+|     58 |   1 | 1950 - 1980 | Antigua & Barbuda                     |
+|     60 |   1 | 1950 - 1982 | Saint Kitts and Nevis                 |
+|     80 |   1 | 1950 - 1980 | Belize                                |
+|    110 |   1 | 1950 - 1965 | Guyana                                |
+|    115 |   1 | 1950 - 1974 | Surinam                               |
+|    338 |   1 | 1950 - 1963 | Malta                                 |
+|    347 |   1 | 1950 - 2007 | Kosovo                                |
+|    352 |   1 | 1950 - 1959 | Cyprus                                |
+|    359 |   1 | 1950 - 1990 | Moldova                               |
+|    402 |   1 | 1950 - 1974 | Cape Verde                            |
+|    403 |   1 | 1950 - 1974 | Sao Tome and Principe                 |
+|    404 |   1 | 1950 - 1973 | Guinea-Bissau                         |
+|    411 |   1 | 1950 - 1967 | Equatorial Guinea                     |
+|    420 |   1 | 1950 - 1964 | Gambia                                |
+|    432 |   1 | 1950 - 1959 | Mali                                  |
+|    433 |   1 | 1950 - 1959 | Senegal                               |
+|    434 |   1 | 1950 - 1959 | Benin                                 |
+|    435 |   1 | 1950 - 1959 | Mauritania                            |
+|    436 |   1 | 1950 - 1959 | Niger                                 |
+|    437 |   1 | 1950 - 1959 | Cote D’Ivoire                         |
+|    438 |   1 | 1950 - 1957 | Guinea                                |
+|    439 |   1 | 1950 - 1959 | Burkina Faso (Upper Volta)            |
+|    451 |   1 | 1950 - 1960 | Sierra Leone                          |
+|    452 |   1 | 1950 - 1956 | Ghana                                 |
+|    461 |   1 | 1950 - 1959 | Togo                                  |
+|    471 |   1 | 1950 - 1959 | Cameroon                              |
+|    475 |   1 | 1950 - 1959 | Nigeria                               |
+|    481 |   1 | 1950 - 1959 | Gabon                                 |
+|    482 |   1 | 1950 - 1959 | Central African Republic              |
+|    483 |   1 | 1950 - 1959 | Chad                                  |
+|    484 |   1 | 1950 - 1959 | Congo                                 |
+|    490 |   1 | 1950 - 1959 | Congo, Democratic Republic of (Zaire) |
+|    500 |   1 | 1950 - 1961 | Uganda                                |
+|    501 |   1 | 1950 - 1962 | Kenya                                 |
+|    510 |   1 | 1950 - 1960 | Tanzania/Tanganyika                   |
+|    516 |   1 | 1950 - 1961 | Burundi                               |
+|    517 |   1 | 1950 - 1961 | Rwanda                                |
+|    520 |   1 | 1950 - 1959 | Somalia                               |
+|    522 |   1 | 1950 - 1976 | Djibouti                              |
+|    531 |   1 | 1950 - 1992 | Eritrea                               |
+|    540 |   1 | 1950 - 1974 | Angola                                |
+|    541 |   1 | 1950 - 1974 | Mozambique                            |
+|    551 |   1 | 1950 - 1963 | Zambia                                |
+|    552 |   1 | 1950 - 1964 | Zimbabwe (Rhodesia)                   |
+|    553 |   1 | 1950 - 1963 | Malawi                                |
+|    565 |   1 | 1950 - 1989 | Namibia                               |
+|    570 |   1 | 1950 - 1965 | Lesotho                               |
+|    571 |   1 | 1950 - 1965 | Botswana                              |
+|    572 |   1 | 1950 - 1967 | Swaziland                             |
+|    580 |   1 | 1950 - 1959 | Madagascar                            |
+|    581 |   1 | 1950 - 1974 | Comoros                               |
+|    590 |   1 | 1950 - 1967 | Mauritius                             |
+|    591 |   1 | 1950 - 1975 | Seychelles                            |
+|    600 |   1 | 1950 - 1955 | Morocco                               |
+|    615 |   1 | 1950 - 1961 | Algeria                               |
+|    616 |   1 | 1950 - 1955 | Tunisia                               |
+|    620 |   1 | 1950 - 1950 | Libya                                 |
+|    625 |   1 | 1950 - 1955 | Sudan                                 |
+|    626 |   1 | 1950 - 2010 | South Sudan                           |
+|    690 |   1 | 1950 - 1960 | Kuwait                                |
+|    692 |   1 | 1950 - 1970 | Bahrain                               |
+|    694 |   1 | 1950 - 1970 | Qatar                                 |
+|    696 |   1 | 1950 - 1970 | United Arab Emirates                  |
+|    771 |   1 | 1950 - 1970 | Bangladesh                            |
+|    781 |   1 | 1950 - 1964 | Maldives                              |
+|    811 |   1 | 1950 - 1952 | Cambodia (Kampuchea)                  |
+|    812 |   1 | 1950 - 1953 | Laos                                  |
+|    816 |   1 | 1950 - 1953 | Vietnam, Democratic Republic of       |
+|    820 |   1 | 1950 - 1956 | Malaysia                              |
+|    830 |   1 | 1950 - 1964 | Singapore                             |
+|    835 |   1 | 1950 - 1983 | Brunei                                |
+|    860 |   1 | 1950 - 2001 | East Timor                            |
+|    910 |   1 | 1950 - 1974 | Papua New Guinea                      |
+|    935 |   1 | 1950 - 1979 | Vanuatu                               |
+|    940 |   1 | 1950 - 1977 | Solomon Islands                       |
+|    950 |   1 | 1950 - 1969 | Fiji                                  |
+|    970 |   1 | 1950 - 1978 | Kiribati                              |
+|    971 |   1 | 1950 - 1967 | Nauru                                 |
+|    972 |   1 | 1950 - 1969 | Tonga                                 |
+|    973 |   1 | 1950 - 1977 | Tuvalu                                |
+|    983 |   1 | 1950 - 1985 | Marshall Islands                      |
+|    986 |   1 | 1950 - 1993 | Palau                                 |
+|    987 |   1 | 1950 - 1985 | Federated States of Micronesia        |
+|    990 |   1 | 1950 - 1961 | Samoa/Western Samoa                   |
+
 UN CYs not in GW
-</caption>
-<thead>
-<tr>
-<th style="text-align:right;">
-gwcode
-</th>
-<th style="text-align:right;">
-seq
-</th>
-<th style="text-align:left;">
-years
-</th>
-<th style="text-align:left;">
-country_name
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:right;">
-31
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1972
-</td>
-<td style="text-align:left;">
-Bahamas
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-51
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Jamaica
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-52
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Trinidad and Tobago
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-53
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1965
-</td>
-<td style="text-align:left;">
-Barbados
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-54
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1977
-</td>
-<td style="text-align:left;">
-Dominica
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-55
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1973
-</td>
-<td style="text-align:left;">
-Grenada
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-56
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1978
-</td>
-<td style="text-align:left;">
-Saint Lucia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-57
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1978
-</td>
-<td style="text-align:left;">
-Saint Vincent and the Grenadines
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-58
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1980
-</td>
-<td style="text-align:left;">
-Antigua & Barbuda
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-60
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1982
-</td>
-<td style="text-align:left;">
-Saint Kitts and Nevis
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-80
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1980
-</td>
-<td style="text-align:left;">
-Belize
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-110
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1965
-</td>
-<td style="text-align:left;">
-Guyana
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-115
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Surinam
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-327
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 2019
-</td>
-<td style="text-align:left;">
-Papal States
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-338
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1963
-</td>
-<td style="text-align:left;">
-Malta
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-352
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Cyprus
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-359
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1990
-</td>
-<td style="text-align:left;">
-Moldova
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-402
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Cape Verde
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-403
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Sao Tome and Principe
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-404
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1973
-</td>
-<td style="text-align:left;">
-Guinea-Bissau
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-411
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1967
-</td>
-<td style="text-align:left;">
-Equatorial Guinea
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-420
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1964
-</td>
-<td style="text-align:left;">
-Gambia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-432
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Mali
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-433
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Senegal
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-434
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Benin
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-435
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Mauritania
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-436
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Niger
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-437
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Cote D’Ivoire
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-438
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1957
-</td>
-<td style="text-align:left;">
-Guinea
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-439
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Burkina Faso (Upper Volta)
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-451
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1960
-</td>
-<td style="text-align:left;">
-Sierra Leone
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-452
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1956
-</td>
-<td style="text-align:left;">
-Ghana
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-461
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Togo
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-471
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Cameroon
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-475
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Nigeria
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-481
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Gabon
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-482
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Central African Republic
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-483
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Chad
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-484
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Congo
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-490
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Congo, Democratic Republic of (Zaire)
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-500
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Uganda
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-501
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1962
-</td>
-<td style="text-align:left;">
-Kenya
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-510
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1960
-</td>
-<td style="text-align:left;">
-Tanzania/Tanganyika
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-516
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Burundi
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-517
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Rwanda
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-520
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Somalia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-522
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1976
-</td>
-<td style="text-align:left;">
-Djibouti
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-531
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1992
-</td>
-<td style="text-align:left;">
-Eritrea
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-540
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Angola
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-541
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Mozambique
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-551
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1963
-</td>
-<td style="text-align:left;">
-Zambia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-552
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1964
-</td>
-<td style="text-align:left;">
-Zimbabwe (Rhodesia)
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-553
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1963
-</td>
-<td style="text-align:left;">
-Malawi
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-565
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1989
-</td>
-<td style="text-align:left;">
-Namibia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-570
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1965
-</td>
-<td style="text-align:left;">
-Lesotho
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-571
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1965
-</td>
-<td style="text-align:left;">
-Botswana
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-572
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1967
-</td>
-<td style="text-align:left;">
-Swaziland
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-580
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1959
-</td>
-<td style="text-align:left;">
-Madagascar
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-581
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Comoros
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-590
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1967
-</td>
-<td style="text-align:left;">
-Mauritius
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-591
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1975
-</td>
-<td style="text-align:left;">
-Seychelles
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-600
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1955
-</td>
-<td style="text-align:left;">
-Morocco
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-615
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Algeria
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-616
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1955
-</td>
-<td style="text-align:left;">
-Tunisia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-620
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1950
-</td>
-<td style="text-align:left;">
-Libya
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-625
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1955
-</td>
-<td style="text-align:left;">
-Sudan
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-626
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 2010
-</td>
-<td style="text-align:left;">
-South Sudan
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-690
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1960
-</td>
-<td style="text-align:left;">
-Kuwait
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-692
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1970
-</td>
-<td style="text-align:left;">
-Bahrain
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-694
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1970
-</td>
-<td style="text-align:left;">
-Qatar
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-696
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1970
-</td>
-<td style="text-align:left;">
-United Arab Emirates
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-771
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1970
-</td>
-<td style="text-align:left;">
-Bangladesh
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-781
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1964
-</td>
-<td style="text-align:left;">
-Maldives
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-811
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1952
-</td>
-<td style="text-align:left;">
-Cambodia (Kampuchea)
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-812
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1953
-</td>
-<td style="text-align:left;">
-Laos
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-816
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1953
-</td>
-<td style="text-align:left;">
-Vietnam, Democratic Republic of
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-820
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1956
-</td>
-<td style="text-align:left;">
-Malaysia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-830
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1964
-</td>
-<td style="text-align:left;">
-Singapore
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-835
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1983
-</td>
-<td style="text-align:left;">
-Brunei
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-860
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 2001
-</td>
-<td style="text-align:left;">
-East Timor
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-910
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1974
-</td>
-<td style="text-align:left;">
-Papua New Guinea
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-935
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1979
-</td>
-<td style="text-align:left;">
-Vanuatu
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-940
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1977
-</td>
-<td style="text-align:left;">
-Solomon Islands
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-950
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1969
-</td>
-<td style="text-align:left;">
-Fiji
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-970
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1978
-</td>
-<td style="text-align:left;">
-Kiribati
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-971
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1967
-</td>
-<td style="text-align:left;">
-Nauru
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-972
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1969
-</td>
-<td style="text-align:left;">
-Tonga
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-973
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1977
-</td>
-<td style="text-align:left;">
-Tuvalu
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-983
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1985
-</td>
-<td style="text-align:left;">
-Marshall Islands
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-986
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1993
-</td>
-<td style="text-align:left;">
-Palau
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-987
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1985
-</td>
-<td style="text-align:left;">
-Federated States of Micronesia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-990
-</td>
-<td style="text-align:right;">
-1
-</td>
-<td style="text-align:left;">
-1950 - 1961
-</td>
-<td style="text-align:left;">
-Samoa/Western Samoa
-</td>
-</tr>
-</tbody>
-</table>
 
 ``` r
 plot_missing(un, x = "pop", ccode = "gwcode", time = "year", statelist = "GW")
@@ -1913,14 +632,14 @@ un2 <- un %>%
   select(gwcode, year, pop_un)
 joint <- list(ksg2, wdi2, un2) %>%
   purrr::reduce(full_join, by = c("gwcode", "year")) %>%
-  tidyr::gather(source, pop, -gwcode, -year, -source_ksg) %>%
+  tidyr::pivot_longer(names_to = "source", values_to = "pop", -c(gwcode, year, source_ksg)) %>%
   # add an indicator for whether the sources have overlapping coverage
   group_by(gwcode, year) %>%
   mutate(overlap = !any(is.na(pop))) %>%
   ungroup()
 
-joint_wide <- joint %>%
-  spread(source, pop)
+joint_wide <- joint |>
+  pivot_wider(names_from = source, values_from = pop)
 ```
 
 The next plot shows the UN, WDI, and KSG population series for each
@@ -1934,7 +653,7 @@ ggplot(joint, aes(x = year, y = pop, group = interaction(gwcode, source),
   theme_minimal()
 ```
 
-    ## Warning: Removed 25527 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 26100 rows containing missing values or values outside the scale range (`geom_line()`).
 
 ![](clean-population_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
@@ -1954,11 +673,11 @@ joint %>%
   left_join(cnames, by = c("gwcode")) %>%
   ggplot(aes(x = year, y = pop, color = source)) +
   facet_wrap(~ country_name, scales = "free_y") +
-  geom_line() + 
+  geom_line() +
   theme_minimal()
 ```
 
-    ## Warning: Removed 80 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 80 rows containing missing values or values outside the scale range (`geom_line()`).
 
 ![](clean-population_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
@@ -1983,7 +702,7 @@ ggplot(cors, aes(x = cor)) +
   theme_minimal()
 ```
 
-    ## Warning: Removed 32 rows containing non-finite values (`stat_bin()`).
+    ## Warning: Removed 32 rows containing non-finite outside the scale range (`stat_bin()`).
 
 ![](clean-population_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
@@ -1999,11 +718,11 @@ joint %>%
   left_join(cnames, by = c("gwcode")) %>%
   ggplot(aes(x = year, y = pop, color = source)) +
   facet_wrap(~ country_name, scales = "free_y") +
-  geom_line() + 
+  geom_line() +
   theme_minimal()
 ```
 
-    ## Warning: Removed 19 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 64 rows containing missing values or values outside the scale range (`geom_line()`).
 
 ![](clean-population_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
@@ -2016,7 +735,7 @@ Check to see how well they are aligned.
 
 ``` r
 # Only look at countries where GW is meeting UN; UN has too many
-weld_countries <- joint %>% 
+weld_countries <- joint %>%
   filter(year==1949 & source == "pop_ksg") %>%
   pull(gwcode)
 weld <- joint %>%
@@ -2028,17 +747,17 @@ weld <- joint %>%
 
 # Countries with divergence in meeting up year
 lookat <- filter(weld, year==1950 & abs(diff) > .05) %>% pull(gwcode)
-  
+
 weld %>%
   gather(source, pop, pop_ksg, pop_un) %>%
   filter(gwcode %in% lookat) %>%
   ggplot(., aes(x = year, y = pop, color = source, group = interaction(source, gwcode))) +
-  geom_line() + 
+  geom_line() +
   theme_minimal() +
   scale_y_log10()
 ```
 
-    ## Warning: Removed 110 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 104 rows containing missing values or values outside the scale range (`geom_line()`).
 
 ![](clean-population_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
@@ -2074,13 +793,13 @@ joint_wide %>%
 ```
 
     ## # A tibble: 5 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    265  1986          0 FALSE     16624     NA      NA
-    ## 2    265  1987          0 FALSE     16641     NA      NA
-    ## 3    265  1988          0 FALSE     16666     NA      NA
-    ## 4    265  1989          0 FALSE     16630     NA      NA
-    ## 5    265  1990          0 FALSE     16247     NA      NA
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    265  1986          0 FALSE     16624      NA     NA
+    ## 2    265  1987          0 FALSE     16641      NA     NA
+    ## 3    265  1988          0 FALSE     16666      NA     NA
+    ## 4    265  1989          0 FALSE     16630      NA     NA
+    ## 5    265  1990          0 FALSE     16247      NA     NA
 
 ``` r
 ## use 1990 and before KSG for Germany
@@ -2097,17 +816,17 @@ joint_wide %>%
 ```
 
     ## # A tibble: 9 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    816  1971          0 FALSE     21595  44484     NA 
-    ## 2    816  1972          0 FALSE     22038  45548     NA 
-    ## 3    816  1973          0 FALSE     22481  46604     NA 
-    ## 4    816  1974          0 FALSE     23244  47658     NA 
-    ## 5    816  1975          0 TRUE      24032  48718  46970.
-    ## 6    816  1976          0 TRUE      49160  49785  48164.
-    ## 7    816  1977          0 TRUE      50413  50861  49418.
-    ## 8    816  1978          0 TRUE      51423  51959  50701.
-    ## 9    816  1979          0 TRUE      52462  53095  51831.
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    816  1971          0 FALSE     21595     NA  42449.
+    ## 2    816  1972          0 FALSE     22038     NA  43429.
+    ## 3    816  1973          0 FALSE     22481     NA  44410.
+    ## 4    816  1974          0 FALSE     23244     NA  45414.
+    ## 5    816  1975          0 TRUE      24032  46483. 46483.
+    ## 6    816  1976          0 TRUE      49160  47685. 47685.
+    ## 7    816  1977          0 TRUE      50413  48955. 48955.
+    ## 8    816  1978          0 TRUE      51423  50250. 50250.
+    ## 9    816  1979          0 TRUE      52462  51378. 51378.
 
 ``` r
 ## use 1974 and before KSG for DRV
@@ -2121,13 +840,13 @@ joint_wide %>%
 ```
 
     ## # A tibble: 5 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    817  1971          0 FALSE     18810     NA      NA
-    ## 2    817  1972          0 FALSE     19086     NA      NA
-    ## 3    817  1973          0 FALSE     19367     NA      NA
-    ## 4    817  1974          0 FALSE     19652     NA      NA
-    ## 5    817  1975          0 FALSE     19941     NA      NA
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    817  1971          0 FALSE     18810      NA     NA
+    ## 2    817  1972          0 FALSE     19086      NA     NA
+    ## 3    817  1973          0 FALSE     19367      NA     NA
+    ## 4    817  1974          0 FALSE     19652      NA     NA
+    ## 5    817  1975          0 FALSE     19941      NA     NA
 
 ``` r
 ## use 1975 and before KSG for RV
@@ -2144,17 +863,17 @@ joint_wide %>%
 ```
 
     ## # A tibble: 9 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    678  1986          0 FALSE      7911   9941     NA 
-    ## 2    678  1987          0 FALSE      8213  10322     NA 
-    ## 3    678  1988          0 FALSE      8529  10731     NA 
-    ## 4    678  1989          0 FALSE      8857  11189     NA 
-    ## 5    678  1990          0 TRUE       9196  11710  13375.
-    ## 6    678  1991          0 TRUE      11613  12302  13896.
-    ## 7    678  1992          0 TRUE      11952  12954  14434.
-    ## 8    678  1993          0 TRUE      12302  13634  14988.
-    ## 9    678  1994          0 TRUE      14859  14298  15553.
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    678  1986          0 FALSE      7911     NA  11901.
+    ## 2    678  1987          0 FALSE      8213     NA  12370.
+    ## 3    678  1988          0 FALSE      8529     NA  12860.
+    ## 4    678  1989          0 FALSE      8857     NA  13364.
+    ## 5    678  1990          0 TRUE       9196  13888. 13888.
+    ## 6    678  1991          0 TRUE      11613  14430. 14430.
+    ## 7    678  1992          0 TRUE      11952  14989. 14989.
+    ## 8    678  1993          0 TRUE      12302  15564. 15564.
+    ## 9    678  1994          0 TRUE      14859  16149. 16149.
 
 ``` r
 ## use 1989 and before KSG for north Yemen
@@ -2168,46 +887,19 @@ joint_wide %>%
 ```
 
     ## # A tibble: 5 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    680  1986          0 FALSE      2220     NA      NA
-    ## 2    680  1987          0 FALSE      2278     NA      NA
-    ## 3    680  1988          0 FALSE      2337     NA      NA
-    ## 4    680  1989          0 FALSE      2398     NA      NA
-    ## 5    680  1990          0 FALSE      2460     NA      NA
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    680  1986          0 FALSE      2220      NA     NA
+    ## 2    680  1987          0 FALSE      2278      NA     NA
+    ## 3    680  1988          0 FALSE      2337      NA     NA
+    ## 4    680  1989          0 FALSE      2398      NA     NA
+    ## 5    680  1990          0 FALSE      2460      NA     NA
 
 ``` r
 ## use KSG for south Yemen
 idx <- pop$gwcode==680 & pop$year <= 1990
 pop$pop[idx] <- pop$pop_ksg[idx]
 pop$source[idx] <- "ksg"
-```
-
-### Kosovo
-
-``` r
-joint_wide %>%
-  filter(gwcode==347 & year > 2006 & year < 2015)
-```
-
-    ## # A tibble: 7 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    347  2008         NA FALSE        NA     NA   1747.
-    ## 2    347  2009         NA FALSE        NA     NA   1761.
-    ## 3    347  2010         NA FALSE        NA     NA   1776.
-    ## 4    347  2011         NA FALSE        NA     NA   1791 
-    ## 5    347  2012         NA FALSE        NA     NA   1807.
-    ## 6    347  2013         NA FALSE        NA     NA   1818.
-    ## 7    347  2014         NA FALSE        NA     NA   1813.
-
-``` r
-# Get Kosovo series and kalman smooth
-idx <- pop$gwcode==347
-kos <- pop$pop_wdi[idx]
-kos <- imputeTS::na_kalman(kos, "auto.arima")
-pop$pop[idx] <- kos
-pop$source[idx] <- "wdi"
 ```
 
 ### Tibet
@@ -2220,13 +912,13 @@ joint_wide %>%
 ```
 
     ## # A tibble: 5 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    711  1946          2 FALSE     1708.     NA      NA
-    ## 2    711  1947          1 FALSE     1700      NA      NA
-    ## 3    711  1948          2 FALSE     1651.     NA      NA
-    ## 4    711  1949          2 FALSE     1604.     NA      NA
-    ## 5    711  1950          2 FALSE     1558.     NA      NA
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    711  1946          2 FALSE     1708.      NA     NA
+    ## 2    711  1947          1 FALSE     1700       NA     NA
+    ## 3    711  1948          2 FALSE     1651.      NA     NA
+    ## 4    711  1949          2 FALSE     1604.      NA     NA
+    ## 5    711  1950          2 FALSE     1558.      NA     NA
 
 ``` r
 # Use KSG for 1950 as well
@@ -2245,22 +937,22 @@ joint_wide %>%
 ```
 
     ## # A tibble: 2 × 7
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl>
-    ## 1    315  1919          0 FALSE     13398     NA      NA
-    ## 2    315  1920          0 FALSE     13530     NA      NA
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl>
+    ## 1    315  1919          0 FALSE     13398      NA     NA
+    ## 2    315  1920          0 FALSE     13530      NA     NA
 
 ``` r
-pop %>% 
+pop %>%
   filter(gwcode==315 & year < 1921)
 ```
 
     ## # A tibble: 3 × 10
-    ##   gwcode  year source_ksg overlap pop_ksg pop_un pop_wdi   pop source gw   
-    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>  <dbl>   <dbl> <dbl> <chr>  <lgl>
-    ## 1    315  1919          0 FALSE     13398     NA      NA 13398 ksg    TRUE 
-    ## 2    315  1920          0 FALSE     13530     NA      NA 13530 ksg    TRUE 
-    ## 3    315  1918         NA NA           NA     NA      NA    NA <NA>   TRUE
+    ##   gwcode  year source_ksg overlap pop_ksg pop_wdi pop_un   pop source gw   
+    ##    <dbl> <dbl>      <dbl> <lgl>     <dbl>   <dbl>  <dbl> <dbl> <chr>  <lgl>
+    ## 1    315  1919          0 FALSE     13398      NA     NA 13398 ksg    TRUE 
+    ## 2    315  1920          0 FALSE     13530      NA     NA 13530 ksg    TRUE 
+    ## 3    315  1918         NA NA           NA      NA     NA    NA <NA>   TRUE
 
 Plot the pop series:
 
@@ -2270,22 +962,14 @@ csk <- pop$pop_ksg[idx]
 plot(pop$year[idx], csk)
 ```
 
-![](clean-population_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
+![](clean-population_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
 
 It is quite jumpy, so use only pre-1937
 
 ``` r
 idx2 <- pop$gwcode==315 & pop$year <= 1937
 csk  <- pop$pop_ksg[idx2]
-csk  <- rev(imputeTS::na.kalman(rev(csk), "auto.arima"))
-```
-
-    ## Warning: na.kalman will be replaced by na_kalman.
-    ##     Functionality stays the same.
-    ##     The new function name better fits modern R code style guidelines.
-    ##     Please adjust your code accordingly.
-
-``` r
+csk  <- rev(imputeTS::na_kalman(rev(csk), "auto.arima"))
 pop$pop[idx2]   <- csk
 pop$source[idx2] <- "ksg"
 
@@ -2295,7 +979,7 @@ csk <- pop$pop[idx]
 plot(pop$year[idx], csk)
 ```
 
-![](clean-population_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](clean-population_files/figure-gfm/unnamed-chunk-26-1.png)<!-- -->
 
 ``` r
 # Prepare to write out data -----------------------------------------------
@@ -2306,8 +990,8 @@ plot(pop$year[idx], csk)
 ### Check values for splitting/joining countries
 
 ``` r
-countries <- c(260, 265, 
-               345, 340, 341, 343, 344, 346, 347, 349, 
+countries <- c(260, 265,
+               345, 340, 341, 343, 344, 346, 347, 349,
                816, 817,
                678, 680,
                365, 366, 367, 368)
@@ -2316,11 +1000,11 @@ pop %>%
   left_join(cnames, by = c("gwcode")) %>%
   ggplot(aes(x = year, y = pop)) +
   facet_wrap(~ country_name, scales = "free", ncol = 4) +
-  geom_line() + 
+  geom_line() +
   theme_minimal()
 ```
 
-![](clean-population_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](clean-population_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
 
 ### Missingness
 
@@ -2328,7 +1012,7 @@ pop %>%
 plot_missing(pop, x = "pop", ccode = "gwcode", time = "year", statelist = "GW")
 ```
 
-![](clean-population_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
+![](clean-population_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
 
 The final data is complete for 1950 to 2019, except for Abkhazia, South
 Ossetia, and Zanzibar.
@@ -2342,68 +1026,11 @@ pop %>%
   knitr::kable()
 ```
 
-<table>
-<thead>
-<tr>
-<th style="text-align:right;">
-gwcode
-</th>
-<th style="text-align:left;">
-years
-</th>
-<th style="text-align:right;">
-N
-</th>
-<th style="text-align:left;">
-country_name
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:right;">
-396
-</td>
-<td style="text-align:left;">
-2008 - 2022
-</td>
-<td style="text-align:right;">
-15
-</td>
-<td style="text-align:left;">
-Abkhazia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-397
-</td>
-<td style="text-align:left;">
-2008 - 2022
-</td>
-<td style="text-align:right;">
-15
-</td>
-<td style="text-align:left;">
-South Ossetia
-</td>
-</tr>
-<tr>
-<td style="text-align:right;">
-511
-</td>
-<td style="text-align:left;">
-1963 - 1964
-</td>
-<td style="text-align:right;">
-2
-</td>
-<td style="text-align:left;">
-Zanzibar
-</td>
-</tr>
-</tbody>
-</table>
+| gwcode | years       |   N | country_name  |
+|-------:|:------------|----:|:--------------|
+|    396 | 2008 - 2025 |  18 | Abkhazia      |
+|    397 | 2008 - 2025 |  18 | South Ossetia |
+|    511 | 1963 - 1964 |   2 | Zanzibar      |
 
 ``` r
 pop %>%
