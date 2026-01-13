@@ -1,7 +1,7 @@
 Combined GDP data
 ================
 
-*Last updated on: 2023-03-23*
+*Last updated on: 2026-01-13*
 
 GDP data from 1950 on, mostly based on WDI, with some gaps filled with
 KSG’s extended GDP data and data from the UN.
@@ -44,25 +44,25 @@ gdp <- read.csv("output/gdp.csv")
 str(gdp)
 ```
 
-    ## 'data.frame':    11597 obs. of  6 variables:
+    ## 'data.frame':    12188 obs. of  6 variables:
     ##  $ gwcode           : int  2 20 40 41 42 70 90 91 92 93 ...
     ##  $ year             : int  1950 1950 1950 1950 1950 1950 1950 1950 1950 1950 ...
-    ##  $ NY.GDP.MKTP.KD   : num  2.37e+12 1.60e+11 1.65e+10 5.06e+09 2.15e+09 ...
-    ##  $ NY.GDP.MKTP.KD.ZG: num  3.868 5.527 0.892 3.109 0 ...
-    ##  $ NY.GDP.PCAP.KD   : num  14931 11628 2791 1570 910 ...
-    ##  $ NY.GDP.PCAP.KD.ZG: num  0 3.09 0.23 2.16 0 ...
+    ##  $ NY.GDP.MKTP.KD   : num  2.34e+12 1.71e+11 1.66e+10 5.08e+09 2.14e+09 ...
+    ##  $ NY.GDP.MKTP.KD.ZG: num  3.84 3.92 0.9 2.81 0 ...
+    ##  $ NY.GDP.PCAP.KD   : num  15196 12463 2801 1555 898 ...
+    ##  $ NY.GDP.PCAP.KD.ZG: num  0 1.518 0.299 2.312 0 ...
 
 ``` r
 head(gdp)
 ```
 
     ##   gwcode year NY.GDP.MKTP.KD NY.GDP.MKTP.KD.ZG NY.GDP.PCAP.KD NY.GDP.PCAP.KD.ZG
-    ## 1      2 1950   2.371053e+12         3.8681393     14930.6888         0.0000000
-    ## 2     20 1950   1.596825e+11         5.5270544     11627.6513         3.0871166
-    ## 3     40 1950   1.652448e+10         0.8917382      2791.2969         0.2297816
-    ## 4     41 1950   5.057760e+09         3.1089622      1570.2453         2.1630856
-    ## 5     42 1950   2.152550e+09         0.0000000       910.1691         0.0000000
-    ## 6     70 1950   7.545591e+10         6.5071637      2700.1579         3.2440247
+    ## 1      2 1950   2.343209e+12         3.8447774     15195.6436         0.0000000
+    ## 2     20 1950   1.712624e+11         3.9190086     12462.9252         1.5181253
+    ## 3     40 1950   1.659334e+10         0.8999262      2800.7951         0.2988148
+    ## 4     41 1950   5.079304e+09         2.8095748      1555.3456         2.3119846
+    ## 5     42 1950   2.136579e+09         0.0000000       897.7624         0.0000000
+    ## 6     70 1950   8.187418e+10         6.4484984      2967.7528         3.7185531
 
 ``` r
 stats <- yaml::read_yaml("output/gdp-signature.yml")
@@ -73,13 +73,13 @@ stats
     ## [1] "tbl_df, tbl, data.frame"
     ## 
     ## $Size_in_mem
-    ## [1] "0.8 Mb"
+    ## [1] "1.3 Mb"
     ## 
     ## $N_countries
     ## [1] 204
     ## 
     ## $Years
-    ## [1] "1950 - 2021"
+    ## [1] "1950 - 2024"
     ## 
     ## $N_columns
     ## [1] 6
@@ -88,10 +88,10 @@ stats
     ## [1] "gwcode, year, NY.GDP.MKTP.KD, NY.GDP.MKTP.KD.ZG, NY.GDP.PCAP.KD, NY.GDP.PCAP.KD.ZG"
     ## 
     ## $N_rows
-    ## [1] 11597
+    ## [1] 12188
     ## 
     ## $N_complete_rows
-    ## [1] 11565
+    ## [1] 12150
 
 ``` r
 gdp %>%
@@ -102,6 +102,7 @@ gdp %>%
   theme_minimal()
 ```
 
-    ## Warning: Removed 61 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 73 rows containing missing values or values outside the scale range
+    ## (`geom_line()`).
 
 ![](README_files/figure-gfm/unnamed-chunk-1-1.png)<!-- -->
