@@ -1,7 +1,7 @@
 WDI Infant mortality
 ================
 
-*Last updated on: 2023-03-24*
+*Last updated on: 2026-01-13*
 
 Infant mortality data for all countries, 1960 on.
 
@@ -22,11 +22,11 @@ df <- read.csv("output/wdi-infmort.csv")
 str(df)
 ```
 
-    ## 'data.frame':    9656 obs. of  5 variables:
+    ## 'data.frame':    10006 obs. of  5 variables:
     ##  $ gwcode         : int  2 2 2 2 2 2 2 2 2 2 ...
     ##  $ year           : int  1960 1961 1962 1963 1964 1965 1966 1967 1968 1969 ...
-    ##  $ infmort        : num  25.9 25.4 24.9 24.4 23.8 23.3 22.7 22 21.3 20.6 ...
-    ##  $ infmort_yearadj: num  -1.21 -1.21 -1.23 -1.22 -1.21 ...
+    ##  $ infmort        : num  25.9 25.5 25 24.4 23.9 23.4 22.7 22.1 21.4 20.7 ...
+    ##  $ infmort_yearadj: num  -1.19 -1.2 -1.22 -1.21 -1.2 ...
     ##  $ infmort_imputed: logi  FALSE FALSE FALSE FALSE FALSE FALSE ...
 
 ``` r
@@ -34,12 +34,12 @@ head(df)
 ```
 
     ##   gwcode year infmort infmort_yearadj infmort_imputed
-    ## 1      2 1960    25.9       -1.210196           FALSE
-    ## 2      2 1961    25.4       -1.212574           FALSE
-    ## 3      2 1962    24.9       -1.225736           FALSE
-    ## 4      2 1963    24.4       -1.222832           FALSE
-    ## 5      2 1964    23.8       -1.212248           FALSE
-    ## 6      2 1965    23.3       -1.208175           FALSE
+    ## 1      2 1960    25.9       -1.194503           FALSE
+    ## 2      2 1961    25.5       -1.202578           FALSE
+    ## 3      2 1962    25.0       -1.215060           FALSE
+    ## 4      2 1963    24.4       -1.212203           FALSE
+    ## 5      2 1964    23.9       -1.203649           FALSE
+    ## 6      2 1965    23.4       -1.195912           FALSE
 
 ``` r
 stats <- yaml::read_yaml("output/wdi-infmort-signature.yml")
@@ -56,7 +56,7 @@ stats
     ## [1] 177
     ## 
     ## $Years
-    ## [1] "1960 - 2021"
+    ## [1] "1960 - 2023"
     ## 
     ## $N_columns
     ## [1] 5
@@ -65,10 +65,10 @@ stats
     ## [1] "gwcode, year, infmort, infmort_yearadj, infmort_imputed"
     ## 
     ## $N_rows
-    ## [1] 9656
+    ## [1] 10006
     ## 
     ## $N_complete_rows
-    ## [1] 9656
+    ## [1] 10006
 
 ``` r
 ggplot(df, aes(x = year, y = infmort, group = gwcode)) +

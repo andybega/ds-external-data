@@ -17,7 +17,7 @@ WDI Infant mortality
 - [Add year-normalized version](#add-year-normalized-version)
 - [Done, save](#done-save)
 
-*Last updated on 24 March 2023*
+*Last updated on 13 January 2026*
 
 Note that places that require attention during data updates are marked
 with *UPDATE:*
@@ -36,14 +36,16 @@ library(WDI)
 library(tidyverse)
 ```
 
-    ## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.2 ──
-    ## ✔ ggplot2 3.4.0      ✔ purrr   1.0.0 
-    ## ✔ tibble  3.1.8      ✔ dplyr   1.0.10
-    ## ✔ tidyr   1.2.1      ✔ stringr 1.5.0 
-    ## ✔ readr   2.1.3      ✔ forcats 0.5.2 
+    ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+    ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
+    ## ✔ forcats   1.0.1     ✔ stringr   1.5.1
+    ## ✔ ggplot2   3.5.2     ✔ tibble    3.3.0
+    ## ✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+    ## ✔ purrr     1.1.0     
     ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
     ## ✖ dplyr::filter() masks stats::filter()
     ## ✖ dplyr::lag()    masks stats::lag()
+    ## ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
 
 ``` r
 library(states)
@@ -58,17 +60,6 @@ library(states)
 
 ``` r
 library(lubridate)
-```
-
-    ## Loading required package: timechange
-    ## 
-    ## Attaching package: 'lubridate'
-    ## 
-    ## The following objects are masked from 'package:base':
-    ## 
-    ##     date, intersect, setdiff, union
-
-``` r
 library(stringr)
 library(yaml)
 
@@ -214,7 +205,7 @@ if (!file.exists("input/infmort.csv")) {
 raw <- read_csv("input/infmort.csv")
 ```
 
-    ## Rows: 16492 Columns: 5
+    ## Rows: 17290 Columns: 5
     ## ── Column specification ────────────────────────────────────────────────────────
     ## Delimiter: ","
     ## chr (3): country, iso2c, iso3c
@@ -231,7 +222,7 @@ drop_year <- raw %>%
   summarize(missing = sum(is.na(SP.DYN.IMRT.IN)), n = n()) %>% 
   filter(missing==n)
 if (nrow(drop_year) > 0) {
-  stop("implement the by-year dropping")
+  raw <- raw |> filter(year < min(drop_year$year))
 }
 
 # convert to G&W system
@@ -251,51 +242,51 @@ knitr::kable(nogwcode)
 
 | iso2c | country                        |   n |
 |:------|:-------------------------------|----:|
-| AG    | Antigua and Barbuda            |  62 |
-| AS    | American Samoa                 |  62 |
-| AW    | Aruba                          |  62 |
-| BM    | Bermuda                        |  62 |
-| CW    | Curacao                        |  62 |
-| DM    | Dominica                       |  62 |
-| FM    | Micronesia, Fed. Sts.          |  62 |
-| FO    | Faroe Islands                  |  62 |
-| GD    | Grenada                        |  62 |
-| GI    | Gibraltar                      |  62 |
-| GL    | Greenland                      |  62 |
-| GU    | Guam                           |  62 |
-| HK    | Hong Kong SAR, China           |  62 |
-| IM    | Isle of Man                    |  62 |
-| JG    | Channel Islands                |  62 |
-| KI    | Kiribati                       |  62 |
-| KN    | St. Kitts and Nevis            |  62 |
-| KY    | Cayman Islands                 |  62 |
-| LC    | St. Lucia                      |  62 |
-| LI    | Liechtenstein                  |  62 |
-| MC    | Monaco                         |  62 |
-| MF    | St. Martin (French part)       |  62 |
-| MH    | Marshall Islands               |  62 |
-| MO    | Macao SAR, China               |  62 |
-| MP    | Northern Mariana Islands       |  62 |
-| NC    | New Caledonia                  |  62 |
-| NR    | Nauru                          |  62 |
-| PF    | French Polynesia               |  62 |
-| PR    | Puerto Rico                    |  62 |
-| PS    | West Bank and Gaza             |  62 |
-| PW    | Palau                          |  62 |
-| SC    | Seychelles                     |  62 |
-| SM    | San Marino                     |  62 |
-| ST    | Sao Tome and Principe          |  62 |
-| SX    | Sint Maarten (Dutch part)      |  62 |
-| TC    | Turks and Caicos Islands       |  62 |
-| TO    | Tonga                          |  62 |
-| TV    | Tuvalu                         |  62 |
-| VC    | St. Vincent and the Grenadines |  62 |
-| VG    | British Virgin Islands         |  62 |
-| VI    | Virgin Islands (U.S.)          |  62 |
-| VU    | Vanuatu                        |  62 |
-| WS    | Samoa                          |  62 |
-| ZH    | Africa Eastern and Southern    |  62 |
-| ZI    | Africa Western and Central     |  62 |
+| AG    | Antigua and Barbuda            |  64 |
+| AS    | American Samoa                 |  64 |
+| AW    | Aruba                          |  64 |
+| BM    | Bermuda                        |  64 |
+| CW    | Curacao                        |  64 |
+| DM    | Dominica                       |  64 |
+| FM    | Micronesia, Fed. Sts.          |  64 |
+| FO    | Faroe Islands                  |  64 |
+| GD    | Grenada                        |  64 |
+| GI    | Gibraltar                      |  64 |
+| GL    | Greenland                      |  64 |
+| GU    | Guam                           |  64 |
+| HK    | Hong Kong SAR, China           |  64 |
+| IM    | Isle of Man                    |  64 |
+| JG    | Channel Islands                |  64 |
+| KI    | Kiribati                       |  64 |
+| KN    | St. Kitts and Nevis            |  64 |
+| KY    | Cayman Islands                 |  64 |
+| LC    | St. Lucia                      |  64 |
+| LI    | Liechtenstein                  |  64 |
+| MC    | Monaco                         |  64 |
+| MF    | St. Martin (French part)       |  64 |
+| MH    | Marshall Islands               |  64 |
+| MO    | Macao SAR, China               |  64 |
+| MP    | Northern Mariana Islands       |  64 |
+| NC    | New Caledonia                  |  64 |
+| NR    | Nauru                          |  64 |
+| PF    | French Polynesia               |  64 |
+| PR    | Puerto Rico (US)               |  64 |
+| PS    | West Bank and Gaza             |  64 |
+| PW    | Palau                          |  64 |
+| SC    | Seychelles                     |  64 |
+| SM    | San Marino                     |  64 |
+| ST    | Sao Tome and Principe          |  64 |
+| SX    | Sint Maarten (Dutch part)      |  64 |
+| TC    | Turks and Caicos Islands       |  64 |
+| TO    | Tonga                          |  64 |
+| TV    | Tuvalu                         |  64 |
+| VC    | St. Vincent and the Grenadines |  64 |
+| VG    | British Virgin Islands         |  64 |
+| VI    | Virgin Islands (U.S.)          |  64 |
+| VU    | Vanuatu                        |  64 |
+| WS    | Samoa                          |  64 |
+| ZH    | Africa Eastern and Southern    |  64 |
+| ZI    | Africa Western and Central     |  64 |
 
 ``` r
 # Take those out
@@ -420,8 +411,10 @@ taiwan <- taiwan %>%
   add_row(gwcode = 713, year = 2018, infmort_new = 4.16) %>%
   add_row(gwcode = 713, year = 2019, infmort_new = 3.83) %>%
   add_row(gwcode = 713, year = 2020, infmort_new = 3.63) %>%
-  # Don't have 2021 values yet, but let's just say it's same as 2020
-  add_row(gwcode = 713, year = 2021, infmort_new = 3.63)
+  add_row(gwcode = 713, year = 2021, infmort_new = 4.12) |>
+  add_row(gwcode = 713, year = 2022, infmort_new = 4.44) |>
+  add_row(gwcode = 713, year = 2023, infmort_new = 4.32) 
+  # 2026-01-13: updated with data through 2023, other years not available
 
 # drop in values
 wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
@@ -504,32 +497,32 @@ missing_country %>%
 
 | gwcode | country               |   n |
 |-------:|:----------------------|----:|
-|     54 | Dominica              |  44 |
-|     55 | Grenada               |  48 |
-|     56 | Saint Lucia           |  43 |
-|     57 | Saint Vincent         |  43 |
-|     58 | Antigua & Barbuda     |  41 |
-|     60 | Saint Kitts and Nevis |  39 |
-|    221 | Monaco                |  62 |
-|    223 | Liechtenstein         |  62 |
+|     54 | Dominica              |  46 |
+|     55 | Grenada               |  50 |
+|     56 | Saint Lucia           |  45 |
+|     57 | Saint Vincent         |  45 |
+|     58 | Antigua & Barbuda     |  43 |
+|     60 | Saint Kitts and Nevis |  41 |
+|    221 | Monaco                |  64 |
+|    223 | Liechtenstein         |  64 |
 |    315 | Czechoslovakia        |  33 |
-|    331 | San Marino            |  62 |
-|    396 | Abkhazia              |  14 |
-|    397 | South Ossetia         |  14 |
-|    403 | Sao Tome and Principe |  47 |
+|    331 | San Marino            |  64 |
+|    396 | Abkhazia              |  16 |
+|    397 | South Ossetia         |  16 |
+|    403 | Sao Tome and Principe |  49 |
 |    511 | Zanzibar              |   2 |
-|    591 | Seychelles            |  46 |
+|    591 | Seychelles            |  48 |
 |    680 | South Yemen           |  24 |
 |    817 | South Vietnam         |  16 |
-|    935 | Vanuatu               |  42 |
-|    970 | Kiribati              |  43 |
-|    971 | Nauru                 |  54 |
-|    972 | Tonga                 |  52 |
-|    973 | Tuvalu                |  44 |
-|    983 | Marshall Islands      |  36 |
-|    986 | Palau                 |  28 |
-|    987 | Micronesia            |  36 |
-|    990 | Samoa/Western Samoa   |  60 |
+|    935 | Vanuatu               |  44 |
+|    970 | Kiribati              |  45 |
+|    971 | Nauru                 |  56 |
+|    972 | Tonga                 |  54 |
+|    973 | Tuvalu                |  46 |
+|    983 | Marshall Islands      |  38 |
+|    986 | Palau                 |  30 |
+|    987 | Micronesia            |  38 |
+|    990 | Samoa/Western Samoa   |  62 |
 
 ``` r
 # Take out countries missing all values
@@ -571,13 +564,13 @@ wdi <- wdi %>%
 sum(is.na(wdi$infmort))
 ```
 
-    ## [1] 393
+    ## [1] 340
 
 ``` r
 sum(is.na(wdi$infmort2))
 ```
 
-    ## [1] 392
+    ## [1] 339
 
 ``` r
 wdi <- wdi %>%
@@ -616,44 +609,36 @@ missing %>%
 
 | gwcode |   N | N_miss | Frac_miss | years       |
 |-------:|----:|-------:|----------:|:------------|
-|    115 |  47 |      8 |      0.17 | 1975 - 1982 |
-|    160 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    232 |  62 |     25 |      0.40 | 1960 - 1984 |
-|    260 |  62 |      8 |      0.13 | 1960 - 1967 |
-|    339 |  62 |     18 |      0.29 | 1960 - 1977 |
+|    115 |  49 |      8 |      0.16 | 1975 - 1982 |
+|    160 |  64 |      9 |      0.14 | 1960 - 1968 |
+|    232 |  64 |     25 |      0.39 | 1960 - 1984 |
+|    260 |  64 |      8 |      0.12 | 1960 - 1967 |
+|    339 |  64 |     18 |      0.28 | 1960 - 1977 |
 |    345 |  47 |     24 |      0.51 | 1960 - 1983 |
-|    352 |  62 |     11 |      0.18 | 1960 - 1970 |
-|    365 |  62 |     10 |      0.16 | 1960 - 1969 |
-|    404 |  48 |     11 |      0.23 | 1974 - 1984 |
-|    411 |  54 |     14 |      0.26 | 1968 - 1981 |
-|    432 |  62 |      3 |      0.05 | 1960 - 1962 |
-|    436 |  62 |      7 |      0.11 | 1960 - 1966 |
-|    475 |  62 |      4 |      0.06 | 1960 - 1963 |
-|    481 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    483 |  62 |     12 |      0.19 | 1960 - 1971 |
-|    490 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    516 |  60 |      2 |      0.03 | 1962 - 1963 |
-|    520 |  62 |     24 |      0.39 | 1960 - 1983 |
-|    530 |  62 |      6 |      0.10 | 1960 - 1965 |
-|    540 |  47 |      5 |      0.11 | 1975 - 1979 |
-|    553 |  58 |      2 |      0.03 | 1964 - 1965 |
-|    560 |  62 |     14 |      0.23 | 1960 - 1973 |
-|    580 |  62 |      8 |      0.13 | 1960 - 1967 |
-|    616 |  62 |      2 |      0.03 | 1960 - 1961 |
-|    630 |  62 |     11 |      0.18 | 1960 - 1970 |
-|    670 |  62 |     12 |      0.19 | 1960 - 1971 |
-|    678 |  62 |      3 |      0.05 | 1960 - 1962 |
-|    698 |  62 |      3 |      0.05 | 1960 - 1962 |
-|    700 |  62 |      3 |      0.05 | 1960 - 1962 |
-|    710 |  62 |      9 |      0.15 | 1960 - 1968 |
-|    712 |  62 |     18 |      0.29 | 1960 - 1977 |
-|    713 |  62 |     10 |      0.16 | 1960 - 1969 |
-|    731 |  62 |     25 |      0.40 | 1960 - 1984 |
-|    760 |  62 |      8 |      0.13 | 1960 - 1967 |
-|    775 |  62 |      8 |      0.13 | 1960 - 1967 |
-|    811 |  62 |     15 |      0.24 | 1960 - 1974 |
-|    812 |  62 |     18 |      0.29 | 1960 - 1977 |
-|    816 |  62 |      4 |      0.06 | 1960 - 1963 |
+|    352 |  64 |     11 |      0.17 | 1960 - 1970 |
+|    404 |  50 |     11 |      0.22 | 1974 - 1984 |
+|    411 |  56 |     14 |      0.25 | 1968 - 1981 |
+|    432 |  64 |      6 |      0.09 | 1960 - 1965 |
+|    436 |  64 |      9 |      0.14 | 1960 - 1968 |
+|    475 |  64 |      4 |      0.06 | 1960 - 1963 |
+|    490 |  64 |      9 |      0.14 | 1960 - 1968 |
+|    516 |  62 |      3 |      0.05 | 1962 - 1964 |
+|    520 |  64 |     23 |      0.36 | 1960 - 1982 |
+|    530 |  64 |      6 |      0.09 | 1960 - 1965 |
+|    540 |  49 |      5 |      0.10 | 1975 - 1979 |
+|    560 |  64 |     16 |      0.25 | 1960 - 1975 |
+|    580 |  64 |     12 |      0.19 | 1960 - 1971 |
+|    616 |  64 |      2 |      0.03 | 1960 - 1961 |
+|    630 |  64 |     11 |      0.17 | 1960 - 1970 |
+|    670 |  64 |     12 |      0.19 | 1960 - 1971 |
+|    710 |  64 |      9 |      0.14 | 1960 - 1968 |
+|    712 |  64 |     20 |      0.31 | 1960 - 1979 |
+|    713 |  64 |     10 |      0.16 | 1960 - 1969 |
+|    760 |  64 |      8 |      0.12 | 1960 - 1967 |
+|    775 |  64 |      8 |      0.12 | 1960 - 1967 |
+|    811 |  64 |     16 |      0.25 | 1960 - 1975 |
+|    812 |  64 |     18 |      0.28 | 1960 - 1977 |
+|    816 |  64 |      4 |      0.06 | 1960 - 1963 |
 
 ``` r
 # add an indicator if series is incomplete 
@@ -675,7 +660,8 @@ ggplot(wdi, aes(x = year, y = infmort, group = gwcode,
   theme_light()
 ```
 
-    ## Warning: Removed 392 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 339 rows containing missing values or values outside the scale range
+    ## (`geom_line()`).
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
@@ -699,9 +685,9 @@ table(fit$model, cut(fit$r2, c(0, .4, .5, .6, .7, .8, .9, 1)))
 
     ##           
     ##            (0,0.4] (0.4,0.5] (0.5,0.6] (0.6,0.7] (0.7,0.8] (0.8,0.9] (0.9,1]
-    ##   mdl_log        1         1         1         2         4        17     151
-    ##   mdl_mix        1         1         1         2         7        24     141
-    ##   mdl_sqrt       1         1         1         2         7        27     138
+    ##   mdl_log        3         2         2         5         3        22     140
+    ##   mdl_mix        4         1         3         4         4        32     129
+    ##   mdl_sqrt       4         1         4         3         6        36     123
 
 ``` r
 fit %>% 
@@ -719,12 +705,12 @@ fit %>%
     ## # Groups:   model [3]
     ##   model    has_missing countries mean_r2 median_r2
     ##   <chr>    <lgl>           <int>   <dbl>     <dbl>
-    ## 1 mdl_mix  FALSE             139    0.93      0.96
-    ## 2 mdl_sqrt FALSE             139    0.93      0.96
-    ## 3 mdl_log  FALSE             139    0.94      0.98
-    ## 4 mdl_sqrt TRUE               38    0.93      0.96
-    ## 5 mdl_log  TRUE               38    0.94      0.97
-    ## 6 mdl_mix  TRUE               38    0.94      0.96
+    ## 1 mdl_mix  FALSE             147    0.9       0.95
+    ## 2 mdl_sqrt FALSE             147    0.9       0.94
+    ## 3 mdl_log  FALSE             147    0.92      0.97
+    ## 4 mdl_sqrt TRUE               30    0.9       0.94
+    ## 5 mdl_mix  TRUE               30    0.91      0.95
+    ## 6 mdl_log  TRUE               30    0.92      0.96
 
 If a model is not performing well on a series where we are not looking
 to impute, who cares. Look at low R2 models for series we are looking to
@@ -768,10 +754,13 @@ wdi %>%
   theme_light()
 ```
 
-    ## Warning: Removed 104 rows containing non-finite values (`stat_smooth()`).
-    ## Removed 104 rows containing non-finite values (`stat_smooth()`).
+    ## Warning: Removed 103 rows containing non-finite outside the scale range
+    ## (`stat_smooth()`).
+    ## Removed 103 rows containing non-finite outside the scale range
+    ## (`stat_smooth()`).
 
-    ## Warning: Removed 104 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 103 rows containing missing values or values outside the scale range
+    ## (`geom_line()`).
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
@@ -805,7 +794,8 @@ ggplot(wdi, aes(x = year)) +
   theme_light()
 ```
 
-    ## Warning: Removed 392 rows containing missing values (`geom_line()`).
+    ## Warning: Removed 339 rows containing missing values or values outside the scale range
+    ## (`geom_line()`).
 
 ![](clean-data_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 

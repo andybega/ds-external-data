@@ -171,7 +171,7 @@ drop_year <- raw %>%
   summarize(missing = sum(is.na(SP.DYN.IMRT.IN)), n = n()) %>% 
   filter(missing==n)
 if (nrow(drop_year) > 0) {
-  stop("implement the by-year dropping")
+  raw <- raw |> filter(year < min(drop_year$year))
 }
 
 # convert to G&W system
@@ -295,8 +295,10 @@ taiwan <- taiwan %>%
   add_row(gwcode = 713, year = 2018, infmort_new = 4.16) %>%
   add_row(gwcode = 713, year = 2019, infmort_new = 3.83) %>%
   add_row(gwcode = 713, year = 2020, infmort_new = 3.63) %>%
-  # Don't have 2021 values yet, but let's just say it's same as 2020
-  add_row(gwcode = 713, year = 2021, infmort_new = 3.63)
+  add_row(gwcode = 713, year = 2021, infmort_new = 4.12) |>
+  add_row(gwcode = 713, year = 2022, infmort_new = 4.44) |>
+  add_row(gwcode = 713, year = 2023, infmort_new = 4.32) 
+  # 2026-01-13: updated with data through 2023, other years not available
 
 # drop in values
 wdi <- left_join(wdi, taiwan, by = c("gwcode", "year")) %>%
